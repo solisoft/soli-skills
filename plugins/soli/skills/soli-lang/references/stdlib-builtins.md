@@ -41,7 +41,8 @@ t.replace("World", "Soli")   # replaces all
 for ch in "héllo" … end      # one-char Strings, both engines; `for ch, i in s` adds the index
 "l1\nl2".lines               # ["l1", "l2"]
 "x" * 3                      # "xxx"
-"ab".ljust(5, ".")           # "ab..."  (also rjust, center, lpad, rpad)
+"42".lpad(5, "0")            # "00042" — PADDING EXISTS: lpad/rpad/center
+"ab".rpad(5, ".")            # "ab..."  (rjust/ljust are aliases; pad defaults to " ")
 "Café & Restaurant".slugify  # "cafe-restaurant"
 "hello_world".camelize       # "helloWorld"; camelize(true) → "HelloWorld"
 "prefix-x".delete_prefix("prefix-")   # also delete_suffix
@@ -57,7 +58,8 @@ nil.to_s                     # ""
 ```
 
 Not available (type error or no such method): `upper`, `lower`,
-`snake_case`, `titleize`, `pad_start`, `=~`, `"%s" % [...]`, `.format`.
+`snake_case`, `titleize`, `pad_start`/`padStart` (use `lpad`/`rpad` — the
+error says so), `=~`, `"%s" % [...]`, `.format`.
 
 ## Array methods
 

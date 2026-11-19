@@ -245,7 +245,11 @@ end
 
 ## Reference index
 
-Read the file for the task at hand:
+Read the file for the task at hand. **Before hand-writing a string, array or
+hash helper (padding, casing, slicing, grouping…), check
+`references/stdlib-builtins.md`**: it is probably built in (`"42".lpad(5,
+"0")`, `rpad`, `center`). An unknown method's error names the Soli equivalent
+of a JS/Python name (`pad_start` → `did you mean 'lpad'?`) — read the hint.
 
 | File | When |
 |---|---|
