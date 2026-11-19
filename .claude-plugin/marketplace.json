@@ -1,0 +1,14 @@
+{
+  "name": "soli-skills",
+  "description": "Claude Code skills for the Soli language and framework, and for SoliDB.",
+  "owner": {
+    "name": "Solisoft"
+  },
+  "plugins": [
+    {
+      "name": "soli",
+      "source": "./plugins/soli",
+      "description": "Skills for writing Soli apps (soli-lang) and SoliDB queries (solidb)."
+    }
+  ]
+}
