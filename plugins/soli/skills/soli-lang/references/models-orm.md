@@ -264,6 +264,53 @@ omitted (`JSON.stringify` of an instance with `password_digest` and
 `api_token` leaves both out). Build a Hash when you need a specific key order
 or one of those fields.
 
+## Domain modelling (DDD)
+
+```soli
+class Amount < ValueObject                # frozen, equal by value
+  cents: Int
+  invariant("cents must not be negative") { @cents >= 0 }   # InvariantViolation
+end
+
+class OrderPaid < DomainEvent
+  number: String
+end
+subscribe(OrderPaid) do |event| … end     # app/subscribers/; runs after commit
+subscribe(OrderPaid, ReceiptJob)          # job = transactional outbox
+
+class Order < Model
+  def pay
+    @status = "paid"
+    @record_event(OrderPaid.new(@number))  # published only if the save succeeds
+  end
+end
+
+class Account < EventSourced              # emit / apply / Account.load(id)
+  static snapshot_every: Int = 100        # unreleased on main (after 2.40.0)
+  balance: Int = 0
+  def deposit(cents: Int)
+    @emit(Deposited.new(cents))
+  end
+  def apply(event)
+    @balance = @balance + event.cents
+  end
+end
+```
+
+- Aggregates: `part_of :invoice` on a child → writes only inside
+  `Invoice.transaction do … end`. `optimistic_lock` → `StaleRecord` (409).
+- Bounded contexts: `module Billing … end` (tables `billing_*`, reopenable
+  across files); `private class Ledger` inside it is unreachable from outside.
+- Snapshots (after 2.40.0): `snapshot_every` writes one every N events in the
+  events' transaction; `load` replays only what follows. The default keeps
+  plain fields only (a `DateTime` field fails the save, naming it) — override
+  `snapshot_state -> Hash` / `restore_snapshot(state)`; bump `static
+  snapshot_version` when the state changes shape; `take_snapshot` backfills.
+- Context map (after 2.40.0): `[contexts]` in `soli.toml`, e.g.
+  `Shipping = ["Billing:events"]`; `soli lint` reports `Billing::Invoice` (or a
+  `"Billing::Invoice"` class_name string) used from Shipping as
+  `smell/context-boundary`. No table, no check.
+
 ## Raw SDBQL (SoliDB)
 
 ```soli
