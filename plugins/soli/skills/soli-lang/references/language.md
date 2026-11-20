@@ -434,6 +434,14 @@ end
 - In an app, after 2.39.5 `soli serve` refuses to boot when a class lacks a
   method of its interface (`soli lint`: `smell/unimplemented-interface`);
   before, nothing checked it in an app.
+- After 2.39.5 too: `interface Person extends Named` (a `Person` class is a
+  `Named` for params, `is_a?`, `implements?`); `interface Repo<T>` bound by
+  `implements Repo<String>` and read through `repo: Repo<String>`.
+- After 2.39.5, the checker holds overrides to the parent's signature
+  (Liskov): `def area(x: String)` over a parent `area(x: Int)` is an error
+  naming `A#area` — unannotated params match, framework parents
+  (`Model`, `Controller`) are not judged. And a `def f -> Int` whose last
+  line is a String is a static error (it always raised when called).
 - Abstract classes (after 2.39.5 only):
 
 ```soli
