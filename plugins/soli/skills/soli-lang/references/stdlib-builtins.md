@@ -268,6 +268,13 @@ token = jwt_sign({"user_id": 7, "sub": "u7"}, secret, {"expires_in": 3600})
 # (ES256 is NOT in 2.36.3 — unreleased on main: a P-256 key, PKCS#8 PEM to sign — Apple's .p8 —, public PEM to verify)
 jwt_verify(token, secret)       # payload hash, or {"error": true, "message": ...}
                                 # (a non-string "sub" is dropped from the payload)
+jwt_verify(token, "", {"algorithm": "RS256", "key": pem, "audience": "client-id",
+  "issuer": "https://op.example", "subject": "42", "authorized_party": "client-id", "leeway": 60})
+# After 2.39.3 an unknown or mistyped option RAISES — `aud`/`iss` are jwt_sign's
+# names, jwt_verify's are `audience`/`issuer` (before, a wrong key skipped the
+# check silently). A list of audiences is any-of. `authorized_party` checks
+# `azp` (and a multi-valued `aud` then needs one). An `iat` beyond the leeway
+# fails "InvalidIssuedAt"; a bare base64 public key as an HMAC secret raises.
 Markdown.to_html("# Hi")        # "<h1>Hi</h1>"
 # TOTP (since 2.36.3 for totp_secret / totp_step / qr_svg)
 secret = Crypto.totp_secret                 # 32 Base32 chars
@@ -304,9 +311,13 @@ request = Saml.auth_request({"idp_sso_url": sso, "sp_entity_id": entity_id, "acs
 # request: id ("_" + 40 hex — keep it), url (redirect there), xml
 assertion = Saml.verify_response(params["SAMLResponse"], {"certificates": [pem],
   "idp_entity_id": idp, "audience": entity_id, "acs_url": acs, "request_id": request["id"]})
+# after 2.39.3 idp_entity_id is required (an empty one raises); skip the Issuer
+# check only by name: "any_issuer": true
 # assertion: name_id, name_id_format, attributes ({name => [values]}, always arrays), issuer,
 #   session_index, session_expires_at, authn_context, assertion_id, response_id,
 #   in_response_to, expires_at, signed ("assertion" | "response" | "both")
+# after 2.39.3: response_id is nil when signed == "assertion" (the wrapper is
+# unsigned); expires_at = earlier of Conditions and bearer NotOnOrAfter
 Saml.metadata({"sp_entity_id": entity_id, "acs_url": acs})   # SP metadata XML (String)
 Saml.parse_metadata(xml)                                     # entity_id, sso_url, certificates (PEM)
 Saml.test_response({"private_key": pem, "issuer": idp, "acs_url": acs, "audience": entity_id,
@@ -315,12 +326,15 @@ Saml.test_response({"private_key": pem, "issuer": idp, "acs_url": acs, "audience
 
 `request_id` is required unless `allow_unsolicited: true`. Refused by name:
 encrypted assertions, ECDSA/PSS, SHA-384, SHA-1 (unless `allow_sha1: true`),
-an RSA certificate under 2048 bits, and (after 2.38.0) a prefix bound to
-`""` or used undeclared. `verify_response` keeps no state: refusing a second
+an RSA certificate under 2048 bits, (after 2.38.0) a prefix bound to
+`""` or used undeclared, and (after 2.39.3) a document over 10,000 elements,
+64 distinct namespace prefixes or 10,000 namespace declarations. The pinned
+certificate's validity dates are not checked. `verify_response` keeps no state: refusing a second
 use of `assertion_id` is the app's job (`SamlSso.spend` in the scaffold).
 The ACS route is a cross-site POST: `skip_csrf("/saml/acs")`, and keep the
 request id in an encrypted `SameSite=None; Secure` cookie, not the session
-(a Lax session cookie does not come with that POST). `soli generate saml`
+(a Lax session cookie does not come with that POST; the scaffold names it
+`__Host-saml_request`, `Path=/`, behind `https://`). `soli generate saml`
 scaffolds all of it (cli.md).
 
 ### Passkeys (`WebAuthn`, since 2.34.0)

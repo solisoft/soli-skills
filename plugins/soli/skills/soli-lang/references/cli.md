@@ -153,7 +153,9 @@ helpers `impersonating?()` / `impersonator()`, partial `impersonations/banner`.
 
 `soli generate oauth <apple|github|google|gitlab|discord|linkedin|microsoft>`
 (needs `generate auth`; 2.36.3 has github/google/gitlab/discord/linkedin/microsoft;
-Apple, account linking and Microsoft multi-tenant are unreleased): `OauthClient` (state, PKCE, `find_or_create_user`, `sign_in`),
+Apple, account linking and Microsoft multi-tenant are unreleased): `OauthSso` in
+`app/services/oauth_sso.sl` (after 2.39.3; it was `OauthClient`, which clashed
+with the `oidc_provider` model) — state, PKCE, `find_or_create_user`, `sign_in`,
 one `<Name>Oauth` service per provider (`authorize_url(state, challenge)`,
 `complete!(code)`), `oauth_controller.sl` (`/auth/:provider`, its callback,
 `/oauth/identities` to link/unlink). Accounts it creates are confirmed,
@@ -162,6 +164,15 @@ tenant (`MICROSOFT_TENANT`) or `organizations` + `MICROSOFT_ALLOWED_TENANTS`.
 Apple: `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
 `APPLE_PRIVATE_KEY_FILE` (inside the app — the server reads no file outside
 its root) or `APPLE_PRIVATE_KEY`.
+After 2.39.3: an address is only ever taken when the provider says it is
+verified — GitHub's verified primary from `/user/emails` (and GitHub uses
+PKCE), Microsoft's only with the `xms_edov` optional claim true or
+`verified_primary_email` (no `preferred_username` fallback; uid is
+`tid:sub`). Linking a provider (`/auth/:provider` while signed in) needs a
+confirmed email and a sign-in in the last 10 minutes, else `/oauth/reauth`
+asks for the password; the owner gets an `OauthMailer.provider_linked`
+email. Taking over an unconfirmed account calls `user.revoke_credentials`.
+Provider error bodies are logged, never shown.
 
 `soli generate saml` (since 2.36.3; needs `generate auth`) writes
 `app/services/saml_sso.sl` (`SamlSso.start(return_to)` → redirect URL,
@@ -172,9 +183,15 @@ assertion signs in once, `SamlSso.spend`), migrations, and
 `skip_csrf("/saml/acs")`.
 Config: `APP_BASE_URL`, `SOLI_SESSION_SECRET`, and `SAML_IDP_METADATA_FILE` or
 `SAML_IDP_ENTITY_ID` + `SAML_IDP_SSO_URL` + `SAML_IDP_CERTIFICATE`;
-`SAML_PROVISION=off` refuses users with no account. An existing account with
-the asserted email is linked on first sign-in — never an admin's (after
-2.38.0), none with `SAML_LINK_EXISTING=off`. One IdP per app.
+`SAML_PROVISION` (after 2.39.3: unset follows `AUTH_SIGNUP` — `closed` means
+no just-in-time accounts; `on` forces them). Accounts SAML creates are
+`sso_only`: no password sign-in, no password reset. Linking an existing
+account by email is **opt-in** after 2.39.3 (`SAML_LINK_EXISTING=on`; before,
+on by default) — never an admin's, never one already linked at that issuer,
+and only an ASCII address taken from an email attribute or an
+`emailAddress`-format NameID. `SAML_IDP_ENTITY_ID` must be set (a blank one
+raises). Request cookie: `__Host-saml_request` behind `https://`. One IdP per
+app; per tenant, scope users per tenant and keep linking off.
 
 `soli generate auth --two-factor` (since 2.36.3; combines with `--passkeys`)
 adds an authenticator-app second factor and **edits no existing file**:
@@ -197,7 +214,11 @@ form field `setup_token`) and OAuth refuses to create that first account; an
 unconfirmed account answers a sign-in like a wrong password when confirmation
 is required, failed attempts are counted with an atomic `increment`, and
 `generate saml` strips the password and sessions of an unconfirmed account it
-links (as OAuth does). The per-IP throttle shared by
+links (as OAuth does). After 2.39.3 both call `User#revoke_credentials`
+(no args): clears password, reset and remember tokens, bumps
+`session_version`, and deletes the user's `OauthIdentity`, `SamlIdentity`,
+`PasskeyCredential`, `ApiToken`, `TwoFactor` and `MagicLink` rows for each
+model the app defines (`const_get(name)` is nil otherwise). The per-IP throttle shared by
 login/sign-up/reset reads `AUTH_ATTEMPTS_PER_IP` (15) per
 `AUTH_IP_WINDOW_SECONDS` (300). The generated files pass `soli fmt --check`
 and `soli lint`.
