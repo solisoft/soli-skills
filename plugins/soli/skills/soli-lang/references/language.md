@@ -460,6 +460,9 @@ class Square < Shape
 end
 ```
 
+  A base class whose method calls one the subclasses provide (declared by
+  its interface) needs `abstract def` for it — otherwise "Cannot access
+  member 'x' on type 'Base'" (after 2.40.0 the message says so).
   `Shape.new` raises "cannot instantiate abstract class Shape"; a concrete
   subclass missing an `abstract def` is a type error and refuses to boot an
   app; `abstract def` outside an `abstract class` is a parse error.
