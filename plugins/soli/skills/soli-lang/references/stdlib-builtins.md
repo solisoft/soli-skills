@@ -204,6 +204,26 @@ end
 - `SOAP.parse` returns a Hash (attributes dropped, `_text` for mixed text,
   `nil` for `<a/>`); for attributes or XPath, `Xml.parse(result["body"])`.
 
+## Spreadsheet (csv, xlsx)
+
+```soli
+Spreadsheet.csv("name,age\nAda,36")        # [{"name": "Ada", "age": "36"}] — csv cells are Strings
+Spreadsheet.csv_file(path)  Spreadsheet.to_csv(rows)  Spreadsheet.csv_write(rows, path)
+Spreadsheet.excel_write(rows, "out.xlsx")              # one sheet "Sheet1", columns = first row's keys SORTED
+Spreadsheet.excel_write(rows, "out.xlsx", ["N°", "Total"])   # header order of your choice
+Spreadsheet.excel("out.xlsx")                          # first sheet -> array of hashes (row 1 = keys)
+# Several sheets (after 2.39.4): a hash name => rows, or name => {"rows", "columns"}
+Spreadsheet.excel_write({"Clients": clients, "Ventes": {"rows": sales, "columns": ["total", "n"]}}, "book.xlsx")
+Spreadsheet.excel("book.xlsx", "Ventes")               # a sheet by name; unknown name raises
+Spreadsheet.excel_sheets("book.xlsx")                  # {"Clients": [...], "Ventes": [...]}, tab order
+```
+
+- Int/Float are written as numbers and read back as **Float** (`2` -> `2.0`);
+  everything else is text, so `"007"` keeps its zeros.
+- Sheet names Excel refuses raise: empty, > 31 chars, `: \ / ? * [ ]`, a
+  leading/trailing `'`, `History`, duplicates ignoring case. With a hash of
+  sheets there is no third argument — put `columns` inside the sheet.
+
 ## DateTime and Duration
 
 ```soli
