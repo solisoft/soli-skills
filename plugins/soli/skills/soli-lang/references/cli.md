@@ -177,6 +177,10 @@ then continues to the provider; the owner gets an `OauthMailer.provider_linked`
 email. Taking over an unconfirmed account calls `user.revoke_credentials`.
 `sso_only?` accounts are refused by every rule. `OauthSso.sign_in` sets
 `session["auth_time"]`. Provider error bodies are logged, never shown.
+After 2.39.4: Apple's and Microsoft's token exchange follows no redirect, and
+`APPLE_BASE_URL` / `MICROSOFT_BASE_URL` may only name this machine
+(`http://127.0.0.1:<port>`, `localhost`, `[::1]` — a test stand-in; anything
+else raises), since their id_token is read unsigned.
 
 `soli generate saml` (since 2.36.3; needs `generate auth`) writes
 `app/services/saml_sso.sl` (`SamlSso.start(return_to)` → redirect URL,
@@ -191,17 +195,21 @@ Config: `APP_BASE_URL`, `SOLI_SESSION_SECRET`, and `SAML_IDP_METADATA_FILE` or
 no just-in-time accounts; `on` forces them). Accounts SAML creates are
 `sso_only` (`user.sso_only?`): no password sign-in or reset, no magic link,
 no API token (create 403, use 401), no passkey, no OAuth link; wrong passwords
-are not counted against it (no lockout). It does not end open sessions —
-SCIM deactivation or `revoke_credentials` does. `SAML_PROVISION` reads only
+are not counted against it (no lockout). After 2.39.4 a SAML session ends
+after `SAML_SESSION_TTL` (default 28800 s) or the IdP's `SessionNotOnOrAfter`,
+whichever is sooner (session key `sign_in_expires_at`, checked by the auth
+scaffold's `load_current_user`); ending it at once takes SCIM deactivation or
+`revoke_credentials`. `SAML_PROVISION` reads only
 `on`/`off` (anything else = off); in production `first_user` mode SAML waits
 until the admin signed up with `AUTH_SETUP_TOKEN`. Linking an existing account
 by email is **opt-in** after 2.39.3 (`SAML_LINK_EXISTING=on`; before, on by
 default) — never an admin's, never one already linked at that issuer, and only
 an ASCII address taken from an email attribute (in `SAML_EMAIL_ATTRIBUTES`
 order) or an `emailAddress`-format NameID (lowercased). With linking off, an
-unconfirmed account is still taken over (when provisioning is on) and a SCIM
+unconfirmed account is still taken over (when provisioning is on), and a SCIM
 account (`scim_provisioned_at` / `scim_external_id`) is linked (and made
-`sso_only` if it has no password). The SP metadata asks for a persistent
+`sso_only` if it has no password) — after 2.39.4 only when its
+`scim_external_id` equals the NameID, or with `SAML_LINK_DIRECTORY=on`. The SP metadata asks for a persistent
 NameID; an `emailAddress` NameID inherits the IdP's address reuse.
 `SAML_IDP_ENTITY_ID` must be set (a blank one raises). Request cookie:
 `__Host-saml_request` behind `https://` (https required except on localhost).
