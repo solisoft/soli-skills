@@ -274,7 +274,10 @@ jwt_verify(token, "", {"algorithm": "RS256", "key": pem, "audience": "client-id"
 # names, jwt_verify's are `audience`/`issuer` (before, a wrong key skipped the
 # check silently). A list of audiences is any-of. `authorized_party` checks
 # `azp` (and a multi-valued `aud` then needs one). An `iat` beyond the leeway
-# fails "InvalidIssuedAt"; a bare base64 public key as an HMAC secret raises.
+# fails "InvalidIssuedAt"; a bare base64 public key as an HMAC secret raises
+# (a heuristic: URL-safe base64, hex DER or a JWK get through). `leeway` is
+# 0..31536000 (raises above). `authorized_party` does not replace `audience`:
+# pass both.
 Markdown.to_html("# Hi")        # "<h1>Hi</h1>"
 # TOTP (since 2.36.3 for totp_secret / totp_step / qr_svg)
 secret = Crypto.totp_secret                 # 32 Base32 chars
@@ -328,7 +331,9 @@ Saml.test_response({"private_key": pem, "issuer": idp, "acs_url": acs, "audience
 encrypted assertions, ECDSA/PSS, SHA-384, SHA-1 (unless `allow_sha1: true`),
 an RSA certificate under 2048 bits, (after 2.38.0) a prefix bound to
 `""` or used undeclared, and (after 2.39.3) a document over 10,000 elements,
-64 distinct namespace prefixes or 10,000 namespace declarations. The pinned
+64 distinct namespace prefixes or 30,000 namespace declarations, an
+InclusiveNamespaces PrefixList over 64 prefixes, and a `SignedInfo` other than
+exactly CanonicalizationMethod, SignatureMethod and one Reference. The pinned
 certificate's validity dates are not checked. `verify_response` keeps no state: refusing a second
 use of `assertion_id` is the app's job (`SamlSso.spend` in the scaffold).
 The ACS route is a cross-site POST: `skip_csrf("/saml/acs")`, and keep the

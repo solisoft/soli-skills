@@ -168,11 +168,15 @@ After 2.39.3: an address is only ever taken when the provider says it is
 verified — GitHub's verified primary from `/user/emails` (and GitHub uses
 PKCE), Microsoft's only with the `xms_edov` optional claim true or
 `verified_primary_email` (no `preferred_username` fallback; uid is
-`tid:sub`). Linking a provider (`/auth/:provider` while signed in) needs a
-confirmed email and a sign-in in the last 10 minutes, else `/oauth/reauth`
-asks for the password; the owner gets an `OauthMailer.provider_linked`
+`tid:sub`; a stored bare-`sub` row is adopted as `tid:sub` when its `raw.tid`
+matches, or in a single-tenant app). Linking a provider is
+`POST /auth/:provider/link` (`button_to` on `/oauth/identities`; a signed-in
+`GET /auth/:provider` just redirects there); it needs a confirmed email and a
+sign-in in the last 10 minutes, else `/oauth/reauth` asks for the password and
+then continues to the provider; the owner gets an `OauthMailer.provider_linked`
 email. Taking over an unconfirmed account calls `user.revoke_credentials`.
-Provider error bodies are logged, never shown.
+`sso_only?` accounts are refused by every rule. `OauthSso.sign_in` sets
+`session["auth_time"]`. Provider error bodies are logged, never shown.
 
 `soli generate saml` (since 2.36.3; needs `generate auth`) writes
 `app/services/saml_sso.sl` (`SamlSso.start(return_to)` → redirect URL,
@@ -185,13 +189,24 @@ Config: `APP_BASE_URL`, `SOLI_SESSION_SECRET`, and `SAML_IDP_METADATA_FILE` or
 `SAML_IDP_ENTITY_ID` + `SAML_IDP_SSO_URL` + `SAML_IDP_CERTIFICATE`;
 `SAML_PROVISION` (after 2.39.3: unset follows `AUTH_SIGNUP` — `closed` means
 no just-in-time accounts; `on` forces them). Accounts SAML creates are
-`sso_only`: no password sign-in, no password reset. Linking an existing
-account by email is **opt-in** after 2.39.3 (`SAML_LINK_EXISTING=on`; before,
-on by default) — never an admin's, never one already linked at that issuer,
-and only an ASCII address taken from an email attribute or an
-`emailAddress`-format NameID. `SAML_IDP_ENTITY_ID` must be set (a blank one
-raises). Request cookie: `__Host-saml_request` behind `https://`. One IdP per
-app; per tenant, scope users per tenant and keep linking off.
+`sso_only` (`user.sso_only?`): no password sign-in or reset, no magic link,
+no API token (create 403, use 401), no passkey, no OAuth link; wrong passwords
+are not counted against it (no lockout). It does not end open sessions —
+SCIM deactivation or `revoke_credentials` does. `SAML_PROVISION` reads only
+`on`/`off` (anything else = off); in production `first_user` mode SAML waits
+until the admin signed up with `AUTH_SETUP_TOKEN`. Linking an existing account
+by email is **opt-in** after 2.39.3 (`SAML_LINK_EXISTING=on`; before, on by
+default) — never an admin's, never one already linked at that issuer, and only
+an ASCII address taken from an email attribute (in `SAML_EMAIL_ATTRIBUTES`
+order) or an `emailAddress`-format NameID (lowercased). With linking off, an
+unconfirmed account is still taken over (when provisioning is on) and a SCIM
+account (`scim_provisioned_at` / `scim_external_id`) is linked (and made
+`sso_only` if it has no password). The SP metadata asks for a persistent
+NameID; an `emailAddress` NameID inherits the IdP's address reuse.
+`SAML_IDP_ENTITY_ID` must be set (a blank one raises). Request cookie:
+`__Host-saml_request` behind `https://` (https required except on localhost).
+New apps: unique `(user_id, issuer)` on identities. One IdP per app; per
+tenant, scope users per tenant and keep linking off.
 
 `soli generate auth --two-factor` (since 2.36.3; combines with `--passkeys`)
 adds an authenticator-app second factor and **edits no existing file**:
@@ -215,10 +230,13 @@ unconfirmed account answers a sign-in like a wrong password when confirmation
 is required, failed attempts are counted with an atomic `increment`, and
 `generate saml` strips the password and sessions of an unconfirmed account it
 links (as OAuth does). After 2.39.3 both call `User#revoke_credentials`
-(no args): clears password, reset and remember tokens, bumps
-`session_version`, and deletes the user's `OauthIdentity`, `SamlIdentity`,
-`PasskeyCredential`, `ApiToken`, `TwoFactor` and `MagicLink` rows for each
-model the app defines (`const_get(name)` is nil otherwise). The per-IP throttle shared by
+(no args): deletes the user's rows of `OauthIdentity`, `SamlIdentity`,
+`PasskeyCredential`, `ApiToken`, `TwoFactor`, `MagicLink`, `Device` (by
+`user_id`) and the OIDC provider's `OauthConsent`, `OauthAuthorizationCode`,
+`OauthDeviceCode`, `OauthRefreshToken` (by `user_key`) for each model the app
+defines (`const_get(name)` is nil otherwise), then clears password, reset and
+remember tokens and bumps `session_version`; raises on failure. Every
+scaffold sign-in sets `session["auth_time"]`; impersonation deletes it. The per-IP throttle shared by
 login/sign-up/reset reads `AUTH_ATTEMPTS_PER_IP` (15) per
 `AUTH_IP_WINDOW_SECONDS` (300). The generated files pass `soli fmt --check`
 and `soli lint`.

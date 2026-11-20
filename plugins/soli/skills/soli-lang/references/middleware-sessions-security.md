@@ -128,7 +128,8 @@ Verified: unlisted top-level keys and unlisted nested keys are dropped.
 
 Native `WebAuthn` class (stdlib-builtins.md) + `soli generate auth --passkeys`
 (cli.md). The generated sign-in mirrors the password login (per-IP throttle,
-locked/confirmed gates, `session_regenerate()`, `user_id` + `session_version`)
+locked/confirmed/`sso_only` gates, `session_regenerate()`, `user_id` +
+`session_version` + `auth_time`)
 and answers every failure with the same 401, including an assertion whose
 user handle is missing or names another account. The challenge lives in one
 session slot (`webauthn_challenge`, purpose-tagged, 300 s TTL) and is deleted
