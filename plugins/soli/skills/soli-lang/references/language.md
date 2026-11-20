@@ -414,6 +414,20 @@ end
 
 The Ruby-style `interface X … end` form does not parse.
 
+- A param/field typed with an interface (`repo: Repository`) — calling its
+  methods (`repo.find(id)`) was a type error up to 2.39.5 ("Cannot access
+  member 'find' on type 'Repository'"); fixed after 2.39.5. On 2.39.5 and
+  earlier, leave such a param unannotated. A subclass of an implementer is
+  accepted where the interface is expected (after 2.39.5 too).
+- An implementation must repeat the signature's annotations: `def draw` for
+  `fn draw() -> String` is "does not match interface signature" — write
+  `def draw -> String`.
+- In an app, `soli serve` refuses to boot when a class lacks a method of an
+  interface it implements (after 2.39.5; `soli lint`:
+  `smell/unimplemented-interface`). Before, nothing checked it in an app.
+- Interfaces are not runtime values: `x.is_a?(Drawable)` is "Undefined
+  variable"; use `x.respond_to?("draw")`.
+
 ### Mixins
 
 ```soli
