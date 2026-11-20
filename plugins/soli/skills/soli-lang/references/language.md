@@ -398,35 +398,65 @@ Person.kind
   `private method 'x' called for an instance of Klass`.
 - `@@class_vars` are not supported (use a static field).
 
-### Interfaces (brace syntax only)
+### Interfaces and abstract classes
 
 ```soli
+# 2.39.5 and earlier: brace form only, annotations repeated in the class
 interface Drawable {
   def draw() -> String;
 }
 
+# unreleased on main (after 2.39.5): the `end` form (braces still parse,
+# `soli fmt` writes this one), parentheses optional
+interface Drawable
+  def draw -> String
+end
+
 class Circle implements Drawable
-  def draw() -> String
+  def draw -> String
     "circle"
   end
 end
 ```
 
-The Ruby-style `interface X … end` form does not parse.
+- Up to 2.39.5, an implementation must repeat the signature's annotations
+  (`def draw` for `-> String` is "does not match interface signature"); after
+  2.39.5 an unannotated param/return matches, and a real mismatch names the
+  parameter or return that differs.
+- A param/field typed with an interface (`repo: Repository`): calling its
+  methods (`repo.find(id)`) is a type error up to 2.39.5 ("Cannot access
+  member 'find' on type 'Repository'") — leave it unannotated there. Fixed
+  after 2.39.5, where a subclass of an implementer is accepted too.
+- Runtime: up to 2.39.5 `x.is_a?("Drawable")` is false and an interface name
+  is "Undefined variable" — use `x.respond_to?("draw")`. After 2.39.5
+  `x.is_a?("Drawable")` is true (class or superclass implements it) and
+  `Circle.implements?("Drawable")` exists. `is_a?` always takes a string.
+- In an app, after 2.39.5 `soli serve` refuses to boot when a class lacks a
+  method of its interface (`soli lint`: `smell/unimplemented-interface`);
+  before, nothing checked it in an app.
+- Abstract classes (after 2.39.5 only):
 
-- A param/field typed with an interface (`repo: Repository`) — calling its
-  methods (`repo.find(id)`) was a type error up to 2.39.5 ("Cannot access
-  member 'find' on type 'Repository'"); fixed after 2.39.5. On 2.39.5 and
-  earlier, leave such a param unannotated. A subclass of an implementer is
-  accepted where the interface is expected (after 2.39.5 too).
-- An implementation must repeat the signature's annotations: `def draw` for
-  `fn draw() -> String` is "does not match interface signature" — write
-  `def draw -> String`.
-- In an app, `soli serve` refuses to boot when a class lacks a method of an
-  interface it implements (after 2.39.5; `soli lint`:
-  `smell/unimplemented-interface`). Before, nothing checked it in an app.
-- Interfaces are not runtime values: `x.is_a?(Drawable)` is "Undefined
-  variable"; use `x.respond_to?("draw")`.
+```soli
+abstract class Shape
+  abstract def area -> Float      # no body
+
+  def describe -> String
+    "area #{@area}"
+  end
+end
+
+class Square < Shape
+  def area -> Float
+    4.0
+  end
+end
+```
+
+  `Shape.new` raises "cannot instantiate abstract class Shape"; a concrete
+  subclass missing an `abstract def` is a type error and refuses to boot an
+  app; `abstract def` outside an `abstract class` is a parse error.
+  `abstract` is not reserved (a variable may be called that). No default
+  methods in interfaces — share code via an abstract class or a module.
 
 ### Mixins
 

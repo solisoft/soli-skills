@@ -23,7 +23,7 @@
 | `@"raw"`, `[[raw]]` | `"""raw"""`, `r"raw"` | parse error / nested array |
 | `def *args` | pass an array | parse error |
 | `super()` in a normal method | `super.method_name()` | `super()` does not call the parent method |
-| `interface X … end` | `interface X { def m() -> T; }` | parse error |
+| `interface X … end` (2.39.5 and earlier) | `interface X { def m() -> T; }` | parse error — accepted after 2.39.5 |
 | `(-3).abs` written `-3.abs` | `(-3).abs` | `-3.abs` is `-(3.abs)` = -3 |
 | `"é".length == 1` | — | length counts bytes (2) |
 
