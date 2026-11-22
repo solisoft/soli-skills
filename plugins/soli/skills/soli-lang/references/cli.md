@@ -174,11 +174,13 @@ by_owner = true)` (app/models/user.sl): new id, impersonation / `two_factor`
 as used (`signed_in_at`) — use it in any sign-in action of your own
 (`same_sign_in` keeps a SAML `sign_in_expires_at`). `POST /confirm_email`
 answers 200 and confirms; for an account `never_signed_in?`, from another
-browser than the sign-up's (no `signup` cookie), it also revokes the
+browser than the sign-up's (no `__Host-signup` cookie), it also revokes the
 account's credentials and mails a reset link. A magic link or provider
 sign-in takes over such an account the same way; an account in use keeps
-its password and second factor. `MagicLink.issue(user, requester_ip)`
-returns nil past 100 pending links (none is evicted). Uniform answers wait
+its password and second factor. `MagicLink.issue(user, requester_ip, held_nonce)`
+returns nil past 3 pending links per requester or 100 per account (none is
+evicted). `update_all` / `delete_all` return an "Error: …" string instead
+of raising: the scaffold wraps them in `auth_written(...)`, which throws. Uniform answers wait
 `AUTH_UNIFORM_SECONDS` (0.25). `start_remember_me` / `rotate_remember_me`
 may return nil (lost a compare-and-swap): set no cookie then.
 
@@ -233,7 +235,7 @@ login address follows `userName` or the work/primary email only.
 `soli generate auth --magic-link | --api-tokens | --impersonation` (unreleased —
 not in 2.36.3; each adds its own files, edits none). Magic link: `/login/link`,
 `MagicLink.issue(user)` → `{token, nonce}`, `MagicLink.redeem(token, nonce)`;
-the link only works in the browser holding the `magic_link` cookie. API
+the link only works in the browser holding the `__Host-magic_link` cookie. API
 tokens: `/api_tokens`, `ApiToken.issue(user, name, scopes, days)` →
 `{record, token}`, middleware order 7 sets `current_user()` and
 `req["api_token"]` from `Authorization: Bearer soli_pat_…` (401 if unknown),
