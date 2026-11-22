@@ -87,8 +87,7 @@ still wrong when tested on 2.36.3 (`soli new` output, SQLite):
 - `CLAUDE.md`: "`x || default` is wrong because 0 and \"\" are TRUTHY" — they
   are falsy; prefer `??` anyway, the reason is inverted. Also "run `soli
   generate` with no argument to see the list" — it prints the general help.
-- `docs/models.md`: "`.sum(field)` is currently always nil" (`.sum("f").first`
-  returns the sum) and "has_many returns a plain array" (a QueryBuilder).
+- `docs/models.md`: "has_many returns a plain array" (a QueryBuilder).
 - `CLAUDE.md`: "`_errors` is `[]` after a successful `save` — `[]` is truthy" —
   `[]` is falsy, `if record._errors` is fine.
 - `app/controllers/CLAUDE.md`, `app/views/CLAUDE.md`: "`@_internal` fields are

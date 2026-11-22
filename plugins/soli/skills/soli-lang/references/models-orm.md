@@ -167,7 +167,8 @@ Terminators and what they actually return:
 | `Model.paginate({"page": 1, "per": 20})` | `{records => [...], pagination => {page, per, total, total_pages}}` |
 
 A database error raises from every terminal — `.first`, `.exists.first`, the
-aggregates, `.all`, `.count`, `update_all`, `delete_all`: none answers nil,
+aggregates, `.all`, `.count`, `update_all`, `delete_all`, `record.delete`:
+none answers nil,
 false or an `"Error: …"` string.
 
 Prefer `.limit(n).all` over `.all.slice(0, n)`; `.all.map { |p| p.title }` or
