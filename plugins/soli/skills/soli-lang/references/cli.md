@@ -156,6 +156,23 @@ session version moves, the user is deactivated or the family is revoked;
 impersonation; token endpoints throttled (`OIDC_REQUESTS_PER_IP`…); device
 user codes unique.
 
+Hardening on top (same cycle). OIDC provider: a refresh family ends after
+`OIDC_REFRESH_CHAIN_TTL` (90 d) or with its sign-in; a code / refresh token
+presented by another client is `invalid_grant` and changes nothing; PKCE for
+every public client; a secret, code or token in the **query string** of
+`/oauth/token` & co is `invalid_request` (send them in the body);
+`/oauth/revoke` denylists access tokens; redirects carry `iss`; a client with
+a `request_object_key` must send `request=` (exp ≤ 10 min ahead);
+`SOLI_OIDC_REGISTRATION_TOKEN` needs 32+ chars. OAuth client: Apple/Microsoft
+id_tokens must echo the `nonce` (a test stand-in has to return the one from
+the authorize URL); `GITHUB_BASE_URL` / `GITHUB_API_URL` / `GITLAB_BASE_URL`
+must be https or loopback; `DELETE /oauth/identities/:id` redirects to
+`/oauth/reauth` unless the sign-in is under ten minutes old;
+`MICROSOFT_TENANT` is a tenant GUID or `organizations` (a domain raises).
+SCIM: past 20 requests without a valid token per address per 5 min → `429`
+(the right token is always served); a non-string value changes nothing; the
+login address follows `userName` or the work/primary email only.
+
 `soli generate auth --magic-link | --api-tokens | --impersonation` (unreleased —
 not in 2.36.3; each adds its own files, edits none). Magic link: `/login/link`,
 `MagicLink.issue(user)` → `{token, nonce}`, `MagicLink.redeem(token, nonce)`;
