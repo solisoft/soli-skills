@@ -339,6 +339,9 @@ assertion = Saml.verify_response(params["SAMLResponse"], {"certificates": [pem],
 # assertion: name_id, name_id_format, attributes ({name => [values]}, always arrays), issuer,
 #   session_index, session_expires_at, authn_context, assertion_id, response_id,
 #   in_response_to, expires_at, signed ("assertion" | "response" | "both")
+# after 2.40.0 also: name_qualifier, sp_name_qualifier (nil when absent),
+#   certificate_expires_at (unix), certificate_expired (Bool); expected option
+#   "require_valid_certificate": true refuses an expired/not-yet-valid IdP cert
 # after 2.39.3: response_id is nil when signed == "assertion" (the wrapper is
 # unsigned); expires_at = earlier of Conditions and bearer NotOnOrAfter
 Saml.metadata({"sp_entity_id": entity_id, "acs_url": acs})   # SP metadata XML (String)
