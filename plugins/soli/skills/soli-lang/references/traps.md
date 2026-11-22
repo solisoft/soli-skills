@@ -57,7 +57,6 @@
 | `before_*` callback whose value is `false` aborts the save (`@flag \|\|= false` as last line!) | end callbacks with `true` |
 | `record.update(attrs)` skips callbacks | assign fields, then `record.save` |
 | `_errors` is `nil` after a good `create` but `[]` after a good `save`/`update` (both falsy: `if record._errors` works; the app CLAUDE.md wrongly calls `[]` truthy) | `_errors.length > 0` is the explicit form |
-| `Model.delete_all` unscoped left rows behind | scope it or loop + `delete` |
 | `.exists`, `.pluck`, `.sum(...)` return a QueryBuilder (always truthy) | `.exists.first`, `.pluck("f").all`, `.sum("f").first` |
 | A misspelled validation option (`"presense"`) stops the app/test server from booting | read the boot error |
 | `resources("posts")` routes DELETE to `destroy`; scaffold writes `delete` | keep action names in sync with `soli routes` |

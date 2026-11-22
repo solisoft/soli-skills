@@ -86,8 +86,8 @@ Post.all                         # array of instances
 - Never add a nil-check after `Model.find` (lint: `idiom/manual-find-guard`).
   Only `.find` on a class name raises; `Array#find`, `XmlNode#find` and a
   query chain's `.find { … }` return nil, and the lint leaves those alone.
-- `Post.delete_all` (unscoped) did **not** empty the table in testing — use a
-  scope (`Post.where({...}).delete_all`) or loop and `delete`.
+- `Post.delete_all` empties the collection, with or without parentheses
+  (before 2.41 the bare form evaluated to the function and deleted nothing).
 
 ## Validations
 
