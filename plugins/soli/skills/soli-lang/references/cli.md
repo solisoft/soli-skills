@@ -177,6 +177,17 @@ in after confirming (a spec confirms the address, then posts `/login`).
 (`rotate_remember_me`; the replaced one is good for 60 s, then its reuse
 revokes remember-me). `TwoFactor` declares `optimistic_lock`.
 
+Builds and tooling, same cycle: a packaged app built without `--update-key`
+refuses updates (`SOLI_ALLOW_UNSIGNED_UPDATES=1` to test); `soli build`
+leaves `*.env`, key/credential files and root `sessions/ tmp/ log/ storage/
+uploads/ coverage/` out of the bundle (`config/database.toml` stays); a
+`soli_version` pin under 2.29.5 is refused; deploy / publish / bundle-key /
+embeddings credentials need https or loopback
+(`SOLI_ALLOW_INSECURE_ENDPOINTS=1`). `generate audit --chain`:
+`AUDIT_CHAIN_KEY` keys the hashes, `Audit.head` + `Audit.verify(head)`
+detect a cut log. `soli lint` flags `System.run("cmd #{x}")` — use the argv
+array. A scaffolded `password` field is not shown in index/show.
+
 Runtime, same cycle: outside `--dev`, `*_url` helpers use the request `Host`
 only when it is in `SOLI_APP_HOSTS` or local (localhost, `*.test`, private
 IP) — a served spec on 127.0.0.1 is unaffected; `/_metrics` needs
