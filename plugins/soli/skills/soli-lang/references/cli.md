@@ -156,6 +156,27 @@ session version moves, the user is deactivated or the family is revoked;
 impersonation; token endpoints throttled (`OIDC_REQUESTS_PER_IP`…); device
 user codes unique.
 
+Base auth scaffold, same cycle: a `soli_pat_` token gets `403` on the
+account's own pages (`API_TOKEN_CLOSED_PATHS`: `/login`, `/passkeys`,
+`/two_factor`, `/api_tokens`, `/impersonate`, `/oauth`, `/saml`, `/privacy`…);
+`auth_own_session?(req)` (no token, no impersonation) and
+`auth_fresh_sign_in?()` (`auth_time` under `AUTH_FRESH_SECONDS`, 900) guard
+adding a passkey / token / authenticator — a remember-me-restored session
+has no `auth_time`; an impersonation ends with the admin's `session_version`
+and after `AUTH_IMPERSONATION_SECONDS`; the password lockout no longer blocks
+passkeys, magic links or tokens; `finish_password_reset` deletes the user's
+ApiToken / PasskeyCredential / MagicLink rows; remember-me expires server-side
+(`remember_created_at`); backup codes are 20 hex chars in four groups.
+`rate_limiter_from_ip` buckets are keyed by address + limit + window.
+With `AUTH_SIGNUP=open`, `POST /signup` answers 200 "check your mailbox" for
+a free and a taken address alike and opens no session;
+`auth_require_confirmed_email()` is true in open mode, so the account signs
+in after confirming (a spec confirms the address, then posts `/login`).
+`first_user` still signs the first account in (302). Auth mails use
+`deliver_later`. The remember-me token rotates on each restore
+(`rotate_remember_me`; the replaced one is good for 60 s, then its reuse
+revokes remember-me). `TwoFactor` declares `optimistic_lock`.
+
 Hardening on top (same cycle). OIDC provider: a refresh family ends after
 `OIDC_REFRESH_CHAIN_TTL` (90 d) or with its sign-in; a code / refresh token
 presented by another client is `invalid_grant` and changes nothing; PKCE for
@@ -233,15 +254,16 @@ after `SAML_SESSION_TTL` (default 28800 s) or the IdP's `SessionNotOnOrAfter`,
 whichever is sooner (session key `sign_in_expires_at`, checked by the auth
 scaffold's `load_current_user`); ending it at once takes SCIM deactivation or
 `revoke_credentials`. `SAML_PROVISION` reads only
-`on`/`off` (anything else = off); in production `first_user` mode SAML waits
+`on`/`off` (anything else = off); outside development `first_user` mode SAML waits
 until the admin signed up with `AUTH_SETUP_TOKEN`. Linking an existing account
 by email is **opt-in** after 2.39.3 (`SAML_LINK_EXISTING=on`; before, on by
 default) — never an admin's, never one already linked at that issuer, and only
 an ASCII address taken from an email attribute (in `SAML_EMAIL_ATTRIBUTES`
 order) or an `emailAddress`-format NameID (lowercased). With linking off, an
 unconfirmed account is still taken over (when provisioning is on — and, after
-2.40.0, only when `auth_require_confirmed_email` is true: otherwise the
-sign-in is refused, since an unconfirmed account may be in use), and a SCIM
+2.40.0, only when `auth_require_confirmed_email` is true — always the case
+with open sign-up: otherwise the sign-in is refused, since an unconfirmed
+account may be in use), and a SCIM
 account (`scim_provisioned_at` / `scim_external_id`) is linked (and made
 `sso_only` if it has no password) — after 2.39.4 only when its
 `scim_external_id` equals the NameID, or with `SAML_LINK_DIRECTORY=on`. The SP metadata asks for a persistent
@@ -266,9 +288,10 @@ own code past the gate, set `session_set("two_factor", "ok:#{user._key}")`.
 
 `soli generate auth` sign-up policy is `AUTH_SIGNUP`: `first_user` (default —
 the first account is created as admin, then `/signup` answers 403), `open`,
-or `closed` (any other value = closed). After 2.39.0, with
-`APP_ENV=production` the first sign-up needs `AUTH_SETUP_TOKEN` (16+ chars,
-form field `setup_token`) and OAuth refuses to create that first account; an
+or `closed` (any other value = closed). After 2.40.0 the first sign-up needs
+`AUTH_SETUP_TOKEN` (16+ chars, form field `setup_token`) everywhere except
+`soli serve --dev` and `APP_ENV=development`/`test` — a served spec of yours
+sets `APP_ENV=test` or the token and OAuth refuses to create that first account; an
 unconfirmed account answers a sign-in like a wrong password when confirmation
 is required, failed attempts are counted with an atomic `increment`, and
 `generate saml` strips the password and sessions of an unconfirmed account it
