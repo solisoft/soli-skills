@@ -58,6 +58,10 @@ post_record = Post.create({"title": "Hello", "body": "World"})  # always returns
                                  # set on it — also by create_many and find_or_create_by; a
                                  # value_field given as a hash comes back as its value object
 post_record._key                 # string key (UUID); `id` is nil on a plain create
+                                 # attributes never set the key: `_key` / `id` / `_from` / STI `type`
+                                 # in the hash are dropped by create, create_many,
+                                 # find_or_create_by, upsert, update(hash) and update_all —
+                                 # pick a key with Post.create(attrs, {"key": "…"})
 post_record._errors              # nil on success
 Post.find(key)                   # RAISES "Post with id 'x' not found" → 404 in a request
 Post.find_by("title", "Hello")   # nil on miss
@@ -179,7 +183,11 @@ end
 Comment.create({"text": "hi", "post_id": post_record._key})
 post_record.comments.count                         # has_many → QueryBuilder (chainable)
 comment.post.title                                 # belongs_to → instance
-Post.where({...}).includes("comments").all         # eager-load: loaded[0].comments.length → 2
+Post.where({...}).includes("comments").all         # eager-load: loaded[0].comments
+Post.includes("comments", {"approved": true}).all   # hash filter = on the related record (rel.…),
+                                                    # also {"where": {...}}; "fields" takes
+                                                    # validated field names only (anything else raises)
+Post.join("comments", {"approved": true}).all       # same: tests the comment, not the post.length → 2
 ```
 
 Relation names in `s`: `has_many("order_remises")` reaches `OrderRemise` (the
