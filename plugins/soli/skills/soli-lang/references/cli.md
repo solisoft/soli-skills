@@ -168,16 +168,19 @@ passkeys, magic links or tokens; `finish_password_reset` deletes the user's
 ApiToken / PasskeyCredential / MagicLink rows; remember-me expires server-side
 (`remember_created_at`); backup codes are 20 hex chars in four groups.
 `rate_limiter_from_ip` buckets are keyed by address + limit + window.
-Sessions are opened by `auth_open_session(user)` (app/models/user.sl): new
-id, impersonation / `two_factor` / `sign_in_expires_at` dropped, `auth_time`
-stamped — use it in any sign-in action of your own. `POST /confirm_email`
-from another browser than the sign-up's (no `signup` cookie) revokes the
-account's credentials and redirects to `/password/edit?token=…`; from the
-same browser it answers 200 and keeps the password. A magic link to an
-unconfirmed account revokes its password too. `MagicLink.issue(user,
-requester_ip)`. Uniform answers wait `AUTH_UNIFORM_SECONDS` (0.25).
-`start_remember_me` / `rotate_remember_me` may return nil (lost a
-compare-and-swap): set no cookie then.
+Sessions are opened by `auth_open_session(user, same_sign_in = false,
+by_owner = true)` (app/models/user.sl): new id, impersonation / `two_factor`
+/ `oauth_*` re-auth markers dropped, `auth_time` stamped, the account marked
+as used (`signed_in_at`) — use it in any sign-in action of your own
+(`same_sign_in` keeps a SAML `sign_in_expires_at`). `POST /confirm_email`
+answers 200 and confirms; for an account `never_signed_in?`, from another
+browser than the sign-up's (no `signup` cookie), it also revokes the
+account's credentials and mails a reset link. A magic link or provider
+sign-in takes over such an account the same way; an account in use keeps
+its password and second factor. `MagicLink.issue(user, requester_ip)`
+returns nil past 100 pending links (none is evicted). Uniform answers wait
+`AUTH_UNIFORM_SECONDS` (0.25). `start_remember_me` / `rotate_remember_me`
+may return nil (lost a compare-and-swap): set no cookie then.
 
 With `AUTH_SIGNUP=open`, `POST /signup` answers 200 "check your mailbox" for
 a free and a taken address alike and opens no session;

@@ -1,7 +1,7 @@
 {
   "name": "soli",
   "description": "Teach Claude Code the Soli language and framework (soli-lang) and SoliDB's SDBQL and HTTP API (solidb).",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "author": { "name": "Solisoft" },
   "homepage": "https://github.com/solisoft/soli-skills"
 }
