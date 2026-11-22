@@ -179,8 +179,8 @@ the account's credentials and mails a reset link. A magic link or provider
 sign-in takes over such an account the same way; an account in use keeps
 its password and second factor. `MagicLink.issue(user, MagicLink.requester_for(ip))`
 returns nil past 3 pending links per requester or 100 per account (none is
-evicted). `update_all` / `delete_all` return an "Error: …" string instead
-of raising: the scaffold wraps them in `auth_written(...)`, which throws. Uniform answers wait
+evicted). A refused `update_all` / `delete_all` raises (and `.first` /
+`.exists.first` on a failed read): none of them answers nil or a string. Uniform answers wait
 `AUTH_UNIFORM_SECONDS` (0.25). `start_remember_me` / `rotate_remember_me`
 may return nil (lost a compare-and-swap): set no cookie then.
 
