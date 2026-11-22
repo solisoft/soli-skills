@@ -173,9 +173,9 @@ by_owner = true)` (app/models/user.sl): new id, impersonation / `two_factor`
 / `oauth_*` re-auth markers dropped, `auth_time` stamped, the account marked
 as used (`signed_in_at`) — use it in any sign-in action of your own
 (`same_sign_in` keeps a SAML `sign_in_expires_at`). `POST /confirm_email`
-answers 200 and confirms; for an account `never_signed_in?`, from another
-browser than the sign-up's (no `__Host-signup` cookie), it also revokes the
-account's credentials and mails a reset link. A magic link or provider
+answers 200 and confirms; for an account `never_signed_in?` it takes the
+sign-up `password` too — without it (or with a wrong one) it also revokes
+the account's credentials and mails a reset link. A magic link or provider
 sign-in takes over such an account the same way; an account in use keeps
 its password and second factor. `MagicLink.issue(user, MagicLink.requester_for(ip))`
 returns nil past 3 pending links per requester or 100 per account (none is
