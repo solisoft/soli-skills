@@ -209,6 +209,8 @@ end
 ```soli
 Spreadsheet.csv("name,age\nAda,36")        # [{"name": "Ada", "age": "36"}] — csv cells are Strings
 Spreadsheet.csv_file(path)  Spreadsheet.to_csv(rows)  Spreadsheet.csv_write(rows, path)
+                                           # to_csv/csv_write quote cells with , " or a newline and
+                                           # prefix a formula cell (= + - @) with ' ; numbers untouched
 Spreadsheet.excel_write(rows, "out.xlsx")              # one sheet "Sheet1", columns = first row's keys SORTED
 Spreadsheet.excel_write(rows, "out.xlsx", ["N°", "Total"])   # header order of your choice
 Spreadsheet.excel("out.xlsx")                          # first sheet -> array of hashes (row 1 = keys)

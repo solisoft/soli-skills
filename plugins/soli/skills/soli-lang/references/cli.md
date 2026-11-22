@@ -177,6 +177,17 @@ in after confirming (a spec confirms the address, then posts `/login`).
 (`rotate_remember_me`; the replaced one is good for 60 s, then its reuse
 revokes remember-me). `TwoFactor` declares `optimistic_lock`.
 
+Runtime, same cycle: outside `--dev`, `*_url` helpers use the request `Host`
+only when it is in `SOLI_APP_HOSTS` or local (localhost, `*.test`, private
+IP) — a served spec on 127.0.0.1 is unaffected; `/_metrics` needs
+`SOLI_METRICS_TOKEN` under `APP_ENV=production`; static dotfiles are not
+served (`.well-known/` is); `Imap.new` / `Pop3.new` to a private or loopback
+host need `SOLI_HTTP_ALLOW_HOSTS`; `Image#resize/thumbnail/crop` raise past
+`SOLI_IMAGE_MAX_DIMENSION_PX` or under 1; `j()` escapes for JS string
+literals (backtick and `$` included), not HTML; a Markdown image in
+`pdf_from_markdown` is read from `public/` only. `soli generate devices` /
+`offline` no longer add `skip_csrf` and use `current_user()`.
+
 Hardening on top (same cycle). OIDC provider: a refresh family ends after
 `OIDC_REFRESH_CHAIN_TTL` (90 d) or with its sign-in; a code / refresh token
 presented by another client is `invalid_grant` and changes nothing; PKCE for
