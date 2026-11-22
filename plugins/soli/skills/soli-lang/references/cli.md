@@ -138,7 +138,23 @@ read, PUT, PATCH in Okta's and Entra's shapes, DELETE; `Groups` the same with
 `app/models/scim_group.sl`; a mapping to `admin` is ignored), bearer token per
 directory in `SCIM_TOKEN` / `SCIM_TOKENS=name=token,…` (32+ chars), and
 `app/middleware/scim_active.sl` (order 8) that makes a deactivated user
-(`deactivated_at` set) a guest on every request.
+(`deactivated_at` set) a guest on every request. After 2.40.0 a directory
+reaches only the accounts it provisioned (`scim_provisioned_at`, owner in
+`scim_directory`): admins, local accounts and another directory's are not
+listed and answer 404 to reads and writes; `SCIM_ADOPT_EXISTING=on` lets it
+adopt a non-admin local account, which calls `User#revoke_credentials`; a
+write that does not save answers 400/409 (it answered 200 before).
+
+Auth scaffolds after 2.40.0: the confirmation link (`GET /confirm_email`)
+shows a button; `POST /confirm_email` confirms (a scanner's GET confirms
+nothing); a completed password reset sets `confirmed_at`. OAuth client: no
+subject → refused, a non-ASCII address matches no account, an account already
+linked at the provider is not linked again by address. OIDC provider: access
+tokens carry `sv`/`cid` and are refused at userinfo/introspect once the
+session version moves, the user is deactivated or the family is revoked;
+`/oauth/logout` forgets remember-me; authorize/device refuse during
+impersonation; token endpoints throttled (`OIDC_REQUESTS_PER_IP`…); device
+user codes unique.
 
 `soli generate auth --magic-link | --api-tokens | --impersonation` (unreleased —
 not in 2.36.3; each adds its own files, edits none). Magic link: `/login/link`,
@@ -206,7 +222,9 @@ by email is **opt-in** after 2.39.3 (`SAML_LINK_EXISTING=on`; before, on by
 default) — never an admin's, never one already linked at that issuer, and only
 an ASCII address taken from an email attribute (in `SAML_EMAIL_ATTRIBUTES`
 order) or an `emailAddress`-format NameID (lowercased). With linking off, an
-unconfirmed account is still taken over (when provisioning is on), and a SCIM
+unconfirmed account is still taken over (when provisioning is on — and, after
+2.40.0, only when `auth_require_confirmed_email` is true: otherwise the
+sign-in is refused, since an unconfirmed account may be in use), and a SCIM
 account (`scim_provisioned_at` / `scim_external_id`) is linked (and made
 `sso_only` if it has no password) — after 2.39.4 only when its
 `scim_external_id` equals the NameID, or with `SAML_LINK_DIRECTORY=on`. The SP metadata asks for a persistent
