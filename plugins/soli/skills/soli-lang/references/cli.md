@@ -177,7 +177,7 @@ answers 200 and confirms; for an account `never_signed_in?`, from another
 browser than the sign-up's (no `__Host-signup` cookie), it also revokes the
 account's credentials and mails a reset link. A magic link or provider
 sign-in takes over such an account the same way; an account in use keeps
-its password and second factor. `MagicLink.issue(user, requester_ip, held_nonce)`
+its password and second factor. `MagicLink.issue(user, MagicLink.requester_for(ip))`
 returns nil past 3 pending links per requester or 100 per account (none is
 evicted). `update_all` / `delete_all` return an "Error: …" string instead
 of raising: the scaffold wraps them in `auth_written(...)`, which throws. Uniform answers wait
