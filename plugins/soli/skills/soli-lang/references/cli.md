@@ -135,7 +135,8 @@ server under `/scim/v2` (`Users`: list, `filter=userName eq "…"`, create,
 read, PUT, PATCH in Okta's and Entra's shapes, DELETE; `Groups` the same with
 `displayName eq` and member add/remove/replace — `ScimGroup.names_for(user)`,
 `const SCIM_GROUP_ROLES = {"Finance": "accountant"}` in
-`app/models/scim_group.sl`; a mapping to `admin` is ignored), bearer token per
+`app/models/scim_group.sl`; a mapping to `admin` is ignored; a group is its
+directory's, another directory's is a 404, `"okta/Finance"` maps one directory's), bearer token per
 directory in `SCIM_TOKEN` / `SCIM_TOKENS=name=token,…` (32+ chars), and
 `app/middleware/scim_active.sl` (order 8) that makes a deactivated user
 (`deactivated_at` set) a guest on every request. After 2.40.0 a directory
@@ -342,7 +343,7 @@ links (as OAuth does). After 2.39.3 both call `User#revoke_credentials`
 defines (`const_get(name)` is nil otherwise), then clears password, reset and
 remember tokens and bumps `session_version`; raises on failure. Every
 scaffold sign-in sets `session["auth_time"]`; impersonation deletes it. The per-IP throttle shared by
-login/sign-up/reset reads `AUTH_ATTEMPTS_PER_IP` (15) per
+login/sign-up/reset reads `AUTH_ATTEMPTS_PER_IP` (8, under the lockout's 10 failures) per
 `AUTH_IP_WINDOW_SECONDS` (300). The generated files pass `soli fmt --check`
 and `soli lint`.
 
