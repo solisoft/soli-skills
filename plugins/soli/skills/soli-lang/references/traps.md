@@ -61,6 +61,7 @@
 | A misspelled validation option (`"presense"`) stops the app/test server from booting | read the boot error |
 | `resources("posts")` routes DELETE to `destroy`; scaffold writes `delete` | keep action names in sync with `soli routes` |
 | `record.destroy` (a Rails habit) | a model has no `destroy`: it **raises** (after 2.40.0; it used to return nil and leave the row). Write `record.delete` |
+| `record.save` / `update` on a row deleted meanwhile | writes nothing and answers `false` (after 2.40.0, every adapter; the SQL adapters used to re-insert the row). `touch` raises; `Model.update(id, …)` returns the `"Error: … not found"` string. Create-if-missing is `Model.upsert(key, data)` |
 | `redirect("https://…")` raises (500) | local paths only (`redirect_external` per docs) |
 | `halt` / `forbidden()` / `find` miss inside `rescue`/`try` get swallowed | keep them outside |
 | `<%= h(x) %>` / `<%= attr(x) %>` escape twice | plain `<%= x %>` |
