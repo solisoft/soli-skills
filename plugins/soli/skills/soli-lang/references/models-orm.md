@@ -266,6 +266,18 @@ replica_delay = 2                 # seconds a client that wrote keeps reading th
   tags each query `replica`/`primary`; `dev_queries()` entries gain
   `replica: true/false` (key absent when no connection has replicas).
 
+## Encryption at rest (fields and files)
+
+- `encrypts(:ssn)` — string fields, AES-256-GCM with `SOLI_ENCRYPTION_KEY`;
+  cannot be filtered on by value.
+- Files: `"encrypted": true` on `uploader` / `has_*_attached` (unreleased after
+  2.40.3; verified on a SoliDB `uploader` and on disk `store_attachment`). The
+  store holds ciphertext (`SBE\x01…`); `attach_<field>`, `<field>_url`,
+  `read_upload` read back the plain file. Needs `SOLI_ENCRYPTION_KEY` (store
+  raises without it); old keys go in `SOLI_ENCRYPTION_OLD_KEYS`
+  (comma-separated). An encrypted file is decrypted whole (no `Range`
+  streaming), and `direct_upload_start` refuses it — use resumable uploads.
+
 ## Serialization
 
 `json_stringify(record)` gives the fields plus `_key`/`id`; `record.to_h` a
