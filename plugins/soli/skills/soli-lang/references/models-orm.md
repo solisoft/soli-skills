@@ -271,7 +271,7 @@ replica_delay = 2                 # seconds a client that wrote keeps reading th
 - `encrypts(:ssn)` — string fields, AES-256-GCM with `SOLI_ENCRYPTION_KEY`;
   cannot be filtered on by value.
 - Files: `"encrypted": true` on `uploader` / `has_*_attached` (unreleased after
-  2.40.3; verified on a SoliDB `uploader` and on disk `store_attachment`). The
+  2.40.4; verified on a SoliDB `uploader` and on disk `store_attachment`). The
   store holds ciphertext (`SBE\x01…`); `attach_<field>`, `<field>_url`,
   `read_upload` read back the plain file. Needs `SOLI_ENCRYPTION_KEY` (store
   raises without it); old keys go in `SOLI_ENCRYPTION_OLD_KEYS`
