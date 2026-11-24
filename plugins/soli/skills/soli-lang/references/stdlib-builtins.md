@@ -569,7 +569,7 @@ realtime_bus()                              # {backend, connected, published, re
 - A script that `broadcast`s with the bus on must not exit at once: the
   publish runs on a background thread (`sleep(1)` is enough to see it land).
 
-## Score engraver (`eui_score_*`, checked on soli 2.40.3)
+## Score engraver (`eui_score_*`, checked on soli 2.40.4)
 
 - `eui_score_layout(src, width, {})` engraves LilyPond source with the
   engine of the `eui` feature (in the released binaries). It answers a hash:
@@ -582,6 +582,12 @@ realtime_bus()                              # {backend, connected, published, re
   a warning, not refused. Since 2.40.3 a file that only *defines* music
   (`x = { c4 d e f }`, no `\score`) engraves its last music variable instead
   of answering "there is no music".
+- 2.40.4 (eui `019fc24`) reads the rest of LilyPond's scripts after a note
+  (`\upmordent`, `\downprall`, `\haydnturn`, `\thumb`, organ heels and
+  toes, the early-music signs…) and, between `\\`, a part of spacer rests
+  as a voice of its own. A source the engraver of an older Soli refused
+  may engrave on a newer one: compare `eui_score_layout(src, …)["error"]`
+  on the Soli the server runs, not on your local one.
 - Each Soli release pins one eui rev (`Cargo.toml`, `eui-score`): an app
   shipping the same engine to the browser as wasm must pin the same rev.
 
