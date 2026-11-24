@@ -274,11 +274,13 @@ replica_delay = 2                 # seconds a client that wrote keeps reading th
   store holds ciphertext (`SBE\x01…`); `attach_<field>`, `<field>_url`,
   `read_upload` read back the plain file. Needs `SOLI_ENCRYPTION_KEY` (store
   raises without it); old keys go in `SOLI_ENCRYPTION_OLD_KEYS`
-  (comma-separated). On SoliDB an encrypted file streams with `Range`
-  (since 2.41.1, verified: `206 bytes 65000-140000/208890`, `416`,
-  `HEAD`); in 2.41.0 it was decrypted whole and a Range got the whole file.
-  Disk/S3/R2 decrypt it whole. `direct_upload_start` refuses it — use
-  resumable uploads.
+  (comma-separated). Downloads through the blob route stream with `Range`,
+  encrypted or not: SoliDB since 2.41.1; disk, S3 and R2 (`soli serve`) from
+  the release after 2.41.1 — before that a disk/S3 file was read whole and a
+  Range got the whole file. Verified on disk and S3, plain and encrypted:
+  `206 bytes 65000-140000/208890`, `416 bytes */208890`, `HEAD`. Image
+  transforms and `read_upload` still load the whole file.
+  `direct_upload_start` refuses an encrypted file — use resumable uploads.
 
 ## Serialization
 
