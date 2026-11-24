@@ -71,6 +71,7 @@
 | `soli test` without `.env.test` exits immediately — apps made by `soli new` up to 2.34.0 have none | create it (SQLite works); later `soli new` writes one |
 | Form POST from a browser without CSRF token → 403 (`SOLI_CSRF_TOKENS=require` in new apps) | `form_with` / `csrf_field()` |
 | `post = …` in a spec replaces the `post()` helper | `post_record = …` |
+| `set_request_cookie("locale", "fr")` then `set_request_cookie("locale", "en")` in one spec on soli 2.39.1–2.40.1: the request carries both cookies and the server keeps the first, so the second value never arrives | soli 2.40.2+ replaces the cookie; on older, switch back through a real request that sets it |
 | Records persist between tests in a worker | reset state in `before_each` |
 | `@_private` controller fields are still readable as `@_private` in the view | don't rely on the underscore to hide data from templates |
 | An action, hook or middleware that prints, mails, calls an API or writes the cache, then raises: in production the request is re-run on the interpreter (unless it wrote to the database first), so the effect happens twice. Since 2.29.4 a request that ran out of `SOLI_HANDLER_TIMEOUT_SECS` is not re-run: it answers 500 at the budget, and a `rescue` cannot keep it looping | raise before the side effect, or catch the error in the action (`try`/`rescue`) |

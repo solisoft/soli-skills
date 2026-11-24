@@ -559,7 +559,8 @@ realtime_bus()                              # {backend, connected, published, re
   background thread. Fire and forget (a message can be lost). With a bus,
   presence (`track`, `ws_list_presence`, `ws_presence_count`,
   `ws_get_presence`, the `presence_diff`s) spans instances — eventually
-  consistent, a crashed instance's users leave after 30–40 s — and
+  consistent (since 2.40.3 a node's older snapshot no longer undoes a later
+  join or leave), a crashed instance's users leave after 30–40 s — and
   `ws_send` / `ws_close` reach a connection held by another instance.
   `broadcast`'s return value, `ws_clients*` and `ws_count()` stay per
   process; `ws_count({"cluster": true})` adds the others' (as of their last
@@ -567,6 +568,22 @@ realtime_bus()                              # {backend, connected, published, re
   reported at boot and treated as `local`, as is `solidb` on a SQL app.
 - A script that `broadcast`s with the bus on must not exit at once: the
   publish runs on a background thread (`sleep(1)` is enough to see it land).
+
+## Score engraver (`eui_score_*`, checked on soli 2.40.3)
+
+- `eui_score_layout(src, width, {})` engraves LilyPond source with the
+  engine of the `eui` feature (in the released binaries). It answers a hash:
+  `layout`, `pages`, `systems`, `width`, `height`, `src`… on success, and
+  `{"error": "score: a '{' that is never closed (at character 0)"}` when the
+  source is refused — test `r["error"].nil?`, the call itself does not raise
+  for bad LilyPond. Callers still write `… rescue {...}` for engine panics.
+  `eui_score_bands`, `eui_score_midi` and `eui_score_pdf` take the same source.
+- What it ignores (fonts, custos, baroque heads, `two-sided`…) is skipped with
+  a warning, not refused. Since 2.40.3 a file that only *defines* music
+  (`x = { c4 d e f }`, no `\score`) engraves its last music variable instead
+  of answering "there is no music".
+- Each Soli release pins one eui rev (`Cargo.toml`, `eui-score`): an app
+  shipping the same engine to the browser as wasm must pin the same rev.
 
 ## App metrics (`Metrics`)
 
