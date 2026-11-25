@@ -23,7 +23,7 @@ clock                 # float seconds; works bare: elapsed = clock - start
 s = "  Hello, World!  "
 s.trim / s.strip      # "Hello, World!"   (also lstrip, rstrip)
 s.upcase / s.downcase # also uppercase / lowercase
-s.length              # bytes! "é".length == 2   (also len, size) — s[i], substring, truncate count characters
+s.length              # characters: "é".length == 1 (also len, size); s.bytesize for UTF-8 bytes
 "hello world".capitalize   # "Hello world"
 "abc".reverse         # "cba"
 t = "Hello, World!"

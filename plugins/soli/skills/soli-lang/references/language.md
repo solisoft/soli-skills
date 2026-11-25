@@ -156,8 +156,10 @@ code), `${}`. A string with its own `#{}` nested inside an interpolation
 it failed with "Unterminated string" — build the inner string in a variable
 there.
 
-`"é".length` is **2** — length counts bytes. String methods: see
-`stdlib-builtins.md`. But `s[i]` indexes by **character**: `"héllo"[1]` is
+`length`, `len`, `size`, `index_of` and the padding widths count
+**characters** (`"é".length` is 1, `"😀".length` is 1); `bytesize` counts
+UTF-8 bytes. Up to 2.41 `length` and `index_of` counted bytes. String methods:
+see `stdlib-builtins.md`. `s[i]` indexes by **character** too: `"héllo"[1]` is
 `"é"`, `"héllo"[-1]` is `"o"` (negative counts from the end, both engines).
 Out of range raises `Index out of bounds: 5 (length 5)` (the length in
 characters) instead of returning nil; write `s[i] rescue nil` for an "or nil"
