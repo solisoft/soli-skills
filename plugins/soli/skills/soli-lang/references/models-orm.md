@@ -330,6 +330,9 @@ end
   `Invoice.transaction do … end`. `optimistic_lock` → `StaleRecord` (409).
 - Bounded contexts: `module Billing … end` (tables `billing_*`, reopenable
   across files); `private class Ledger` inside it is unreachable from outside.
+  Inside the module its classes are read unqualified and win over a global
+  of the same name. In 2.42.0 a builtin `Policy`, `Path`, `Bytes`… took over
+  instead (fixed after it); there, write `Referential::Policy` in full.
 - Snapshots (after 2.40.0): `snapshot_every` writes one every N events in the
   events' transaction; `load` replays only what follows. The default keeps
   plain fields only (a `DateTime` field fails the save, naming it) — override
