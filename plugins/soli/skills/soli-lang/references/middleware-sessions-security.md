@@ -48,25 +48,30 @@ from anywhere. There is no `# paths:`/`# methods:` directive — check
 ## Sessions
 
 ```soli
-session_set("user_id", 42)
-session_get("user_id")         # 42, nil when absent
-session_has("user_id")         # true
-session_delete("user_id")
-session_regenerate()           # after login
-session_destroy()              # logout — bare functions need ()
-session_driver()               # "in_memory" by default
+Session.set("user_id", 42)
+Session.get("user_id")         # 42, nil when absent
+Session.has("user_id")         # true
+Session.delete("user_id")
+Session.regenerate             # after login
+Session.destroy                # logout
+Session.driver                 # "in_memory" by default
 ```
+
+`session_set`, `session_get`, `session_has`, `session_delete`,
+`session_regenerate`, `session_destroy`, `session_id`, `session_driver`,
+`session_configure` and `session_config` still run and each warns once per
+process. `csrf_token()` stays a function.
 
 Verified across requests with a cookie jar: the session cookie is
 `session_id=…; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`; after
-`session_destroy()` the value is gone. The default `in_memory` driver is lost
+`Session.destroy` the value is gone. The default `in_memory` driver is lost
 on restart and not shared between processes — configure `cookie` (needs
 `SOLI_SESSION_SECRET`, 32+ chars), `disk`, `solidb` or `solikv` for real use
 (`SOLI_SESSION_DRIVER`; drivers other than in_memory not verified here).
 
 After 2.39.0 (checked with the `disk` driver and in unit tests):
-`session_destroy()` installs an empty session and the response sets the cookie
-to its new id, so a `flash` after it is kept (before: no Set-Cookie, writes
+`Session.destroy` installs an empty session and the response sets the cookie
+to its new id, so a `Session.flash` after it is kept (before: no Set-Cookie, writes
 lost). A write racing a logout no longer brings the session back (0/20, was
 4/20). `SOLI_SESSION_TTL` is refreshed by reads too (once a quarter of it has
 passed), `SOLI_SESSION_MAX_LIFETIME` (default 30 days) caps every driver, not
@@ -79,24 +84,37 @@ Rack). An `https://` `APP_BASE_URL` makes cookies `Secure`
 
 ```soli
 cookies["theme"]               # request cookies (global hash); cookies.theme also works
-set_cookie("theme", "dark", {"max_age": 3600, "http_only": true})
+Cookie.set("theme", "dark", {"max_age": 3600, "http_only": true})
 # → Set-Cookie: theme=dark; Path=/; Max-Age=3600; HttpOnly
-read_cookie("name")            # raw, nil when absent
+Cookie.read("name")            # raw, nil when absent
 ```
 
-Sealed cookies (documented, need `SOLI_SESSION_SECRET`):
-`set_cookie("uid", 42, {"signed": true})`, `{"encrypted": true}`, read back
-with `read_cookie("uid", {"signed": true})` — use `read_cookie`, not
-`cookies[...]`, for values you must trust.
+`set_cookie` and `read_cookie` still run and each warns once per process.
+The `cookies` hash is the parsed request header; it is not deprecated.
+
+Sealed cookies (need `SOLI_SESSION_SECRET`, or `Session.configure({"secret": …})`):
+`Cookie.signed("uid", 42)` writes, `Cookie.signed("uid")` reads.
+`Cookie.encrypted` is the same with one argument to read and two or three to
+write. The flag is forced on. A missing name reads as nil before a secret is
+required. Trap: `Cookie.signed("uid", {"max_age": 60})` (a read written the
+old `read_cookie(name, opts)` way) raises instead of overwriting the cookie;
+store an options-shaped hash with a third argument: `Cookie.signed(n, h, {})`.
+Use `Cookie.signed` / `Cookie.encrypted`, not `cookies[...]`, for a
+value you must trust. `set_cookie("uid", 42, {"signed": true})` still works
+and warns once.
 
 ## Flash
 
+Flash is `Session`'s mailbox.
+
 ```soli
-flash("notice", "Saved!")
+Session.flash("notice", "Saved!")
 redirect("/next")
 # next request:
-flashes()                      # [{"message": "Saved!", "type": "notice"}]; then [] after
+Session.flashes                # [{"message": "Saved!", "type": "notice"}]; then [] after
 ```
+
+`flash`, `flash_now` and `flashes` still run and each warns once per process.
 
 ## CSRF
 
@@ -128,7 +146,7 @@ Verified: unlisted top-level keys and unlisted nested keys are dropped.
 
 Native `WebAuthn` class (stdlib-builtins.md) + `soli generate auth --passkeys`
 (cli.md). The generated sign-in mirrors the password login (per-IP throttle,
-locked/confirmed/`sso_only` gates, `session_regenerate()`, `user_id` +
+locked/confirmed/`sso_only` gates, `Session.regenerate`, `user_id` +
 `session_version` + `auth_time`)
 and answers every failure with the same 401, including an assertion whose
 user handle is missing or names another account. The challenge lives in one

@@ -280,20 +280,24 @@ uuid_v4()                       # 36-char UUID
 h = password_hash("secret")     # Argon2id
 password_verify("secret", h)    # true
 Base64.encode("hello") / Base64.decode("aGVsbG8=")
-token = jwt_sign({"user_id": 7, "sub": "u7"}, secret, {"expires_in": 3600})
+token = JWT.sign({"user_id": 7, "sub": "u7"}, secret, {"expires_in": 3600})
+# JWT.verify and JWT.decode_unsafe are the other two methods. jwt_sign,
+# jwt_verify and jwt_decode_unsafe still run and each warns once per process
+# (deprecated). jwt_decode stays removed.
 # secret must be >= 32 bytes (raises otherwise); without an expiry, verify
 # answers {"error": true, "message": "Missing required claim: exp"}
 # Time claims come from the OPTIONS: {"exp": ts} or {"expires_in": s},
 # {"iat": ts} (default now), {"nbf": ts}. An "exp"/"iat" key in the payload
-# raises ("jwt_sign() takes `iat` from the options, not the payload").
+# raises ("JWT.sign() takes `iat` from the options, not the payload";
+# the jwt_sign alias still says jwt_sign() in that message).
 # asymmetric: {"algorithm": "RS256" | "ES256" | "EdDSA", "key": pem} with secret ""
 # (ES256 is NOT in 2.36.3 — unreleased on main: a P-256 key, PKCS#8 PEM to sign — Apple's .p8 —, public PEM to verify)
-jwt_verify(token, secret)       # payload hash, or {"error": true, "message": ...}
+JWT.verify(token, secret)       # payload hash, or {"error": true, "message": ...}
                                 # (a non-string "sub" is dropped from the payload)
-jwt_verify(token, "", {"algorithm": "RS256", "key": pem, "audience": "client-id",
+JWT.verify(token, "", {"algorithm": "RS256", "key": pem, "audience": "client-id",
   "issuer": "https://op.example", "subject": "42", "authorized_party": "client-id", "leeway": 60})
-# After 2.39.3 an unknown or mistyped option RAISES — `aud`/`iss` are jwt_sign's
-# names, jwt_verify's are `audience`/`issuer` (before, a wrong key skipped the
+# After 2.39.3 an unknown or mistyped option RAISES — `aud`/`iss` are JWT.sign's
+# names, JWT.verify's are `audience`/`issuer` (before, a wrong key skipped the
 # check silently). A list of audiences is any-of. `authorized_party` checks
 # `azp` (and a multi-valued `aud` then needs one). An `iat` beyond the leeway
 # fails "InvalidIssuedAt"; a bare base64 public key as an HMAC secret raises
@@ -323,7 +327,7 @@ X509.fingerprint(pem)          # hex SHA-256 of the DER; X509.spki_pin(pem) for 
 id = X509.issue({"issuer_cert": ca_pem, "issuer_key": ca_key_pem,
   "subject": {"common_name": "Adèle Martin", "email": "a@x.fr", "country": "FR"},
   "days": 1, "policies": ["1.3.6.1.4.1.99999.1"]})    # ca: true → intermediate CA
-# id: cert, key (PKCS#8 PEM), serial, not_after_unix — feed cert/key to pdf_sign
+# id: cert, key (PKCS#8 PEM), serial, not_after_unix — feed cert/key to PDF.sign
 # with "chain": [ca_pem, root_pem]; one key per signer = eIDAS advanced signature.
 ```
 
@@ -411,6 +415,44 @@ hasenv("HOME")
 
 Under `soli serve`, file paths are jailed to the app directory; scripts and
 the test runner are not jailed. There is no `setenv`.
+
+## Path, Bytes, Zip (unreleased on main)
+
+`Path` is a lexical `/` string. It does not touch the disk and it does not
+normalize `.` or `..`.
+
+```soli
+Path.join("a", "b", "c.txt")     # "a/b/c.txt"
+Path.join("/var", "app")         # "/var/app"
+Path.join("a//b")                # "a/b"
+Path.dirname("/var/app/x")       # "/var/app"   (no slash → "."; "/" stays "/")
+Path.basename("a/b.txt")         # "b.txt"      ("/" stays "/")
+Path.extname("archive.tar.gz")   # ".gz"        (".gitignore" → "")
+```
+
+`Bytes` is one binary value. `from_string` is UTF-8, `from_array` is `0..255`,
+`from_base64` is standard base64. `slice(start, end)` is exclusive. `to_string`
+raises when the bytes are not UTF-8. It does not change what `File`, `Image`,
+`HTTP` or `PDF` return.
+
+```soli
+hello = Bytes.from_string("hello")
+hello.length                         # 5
+hello.slice(1, 4).to_string          # "ell"
+hello.to_base64                      # "aGVsbG8="
+```
+
+`Zip` holds an archive in memory (the `office` feature). A name given to
+`Zip.create` must be relative, with no empty, `.` or `..` segment; `Zip.read`
+takes any name `Zip.entries` lists. A read inflates at most 32 MiB of one
+entry and raises past it: `Zip.read(a, name, {"max_size": n})` to raise it.
+
+```soli
+archive = Zip.create({"hello.txt": "hi", "bin.dat": {"base64": "YWJj"}})
+Zip.read_text(archive, "hello.txt")   # "hi"
+Zip.read(archive, "bin.dat")          # base64
+Zip.entries(archive)                   # [{name, size, compressed_size, directory}, …]
+```
 
 ## HTTP client
 
@@ -511,7 +553,12 @@ HTTP.stream_cancel(id)                     # true if it was running here
 - Both work in a plain script on the default engine (verified with a local
   server allowed through `SOLI_HTTP_ALLOW_HOSTS`).
 
-### Realtime: WebSockets, `broadcast`, SSE pub/sub
+### Realtime: WebSockets, `Channel`, SSE pub/sub
+
+`Channel` is the room. `sse` and `stream` stay response helpers. `Model.broadcast`
+is a different method (the collection name is the channel). The `ws_*`,
+`broadcast` and `sse_broadcast` / `sse_subscribe` functions still run and each
+warns once per process.
 
 ```soli
 # config/routes.sl
@@ -520,8 +567,8 @@ router_websocket("/ws/room", "room#handle")
 # app/controllers/room_controller.sl — a top-level def; always return a hash
 def handle(event)                          # event: type, connection_id, message, headers, query
   if event["message"] == "join"
-    ws_join("lobby")                       # THIS connection; lands before the next line
-    return {"send": "#{ws_clients_in("lobby").length} here"}
+    Channel.join("lobby")                  # THIS connection; lands before the next line
+    return {"send": "#{Channel.clients_in("lobby").length} here"}
   end
   return {"broadcast_room": event["message"]} if event["type"] == "message"
 
@@ -529,28 +576,30 @@ def handle(event)                          # event: type, connection_id, message
 end
 
 # From an action, job or callback (any engine):
-broadcast("lobby", {"text": "hi"})          # WS channel AND SSE topic "lobby"; returns local SSE count
-broadcast("lobby", "x", {"local": true})    # never published to the realtime bus
-Post.broadcast({"event": "created"})        # channel = collection name ("posts")
-ws_broadcast_room("lobby", "x")             # WS only; ws_broadcast(msg) = every socket
-sse_broadcast("news", "data", "event-name") # SSE only
-ws_count()                                  # Int; ws_clients / ws_clients_in(ch) -> Array<String> ids
-realtime_bus()                              # {backend, connected, published, received, dropped, last_rx_at}
+Channel.broadcast("lobby", {"text": "hi"})       # WS channel AND SSE topic "lobby"; returns local SSE count
+Channel.broadcast("lobby", "x", {"local": true}) # never published to the realtime bus
+Post.broadcast({"event": "created"})             # channel = collection name ("posts")
+Channel.broadcast_room("lobby", "x")             # WS only; Channel.broadcast_all(msg) = every socket
+Channel.sse_broadcast("news", "data", "event-name") # SSE only
+Channel.count                                    # Int; Channel.clients / Channel.clients_in(ch) -> Array<String> ids
+realtime_bus()                                   # {backend, connected, published, received, dropped, last_rx_at}
 ```
 
 - Handler return keys: `send`, `broadcast` (every socket), `join`, `leave`,
   `broadcast_room` (most recently joined room), `broadcast_channel`
   (`{"channel": "user:42", "message": payload}`, a named room), `close`, `track` / `untrack` /
   `set_presence` (Phoenix-style presence). Non-string payloads JSON-encode.
-- `ws_join` / `ws_leave` raise outside a WebSocket handler ("only works
-  inside a WebSocket handler") — from an action, there is no "current"
-  connection. Outside `soli serve` (script, spec, `soli worker`) the senders
-  do nothing locally and the readers answer `[]` / `0` / `nil`.
+- `Channel.join` / `Channel.leave` (and `ws_join` / `ws_leave`) raise outside a
+  WebSocket handler ("only works inside a WebSocket handler") — from an action,
+  there is no "current" connection. Outside `soli serve` (script, spec,
+  `soli worker`) the senders do nothing locally and the readers answer `[]` /
+  `0` / `nil`.
 - **One process by default.** Rooms, SSE subscribers and presence live in the
   process that accepted the socket. `SOLI_REALTIME_BUS=solidb` (env, on every
-  instance and on `soli worker`) carries `broadcast`, `Model.broadcast`,
-  `ws_broadcast*`, `sse_broadcast` and the handler broadcast actions to every
-  instance through the engine-owned `_rt_bus` SoliDB collection's changefeed;
+  instance and on `soli worker`) carries `Channel.broadcast`, `Model.broadcast`,
+  `Channel.broadcast_all` / `broadcast_room`, `Channel.sse_broadcast` and the
+  handler broadcast actions to every instance through the engine-owned
+  `_rt_bus` SoliDB collection's changefeed;
   `SOLI_REALTIME_BUS=solikv` (or `redis` / `valkey`) does it with RESP
   `PUBLISH`/`SUBSCRIBE` on the SoliKV of `SOLIKV_RESP_HOST` /
   `SOLIKV_RESP_PORT` / `SOLIKV_TOKEN` — no database needed, so the choice for
@@ -561,13 +610,15 @@ realtime_bus()                              # {backend, connected, published, re
   `ws_get_presence`, the `presence_diff`s) spans instances — eventually
   consistent (since 2.40.3 a node's older snapshot no longer undoes a later
   join or leave), a crashed instance's users leave after 30–40 s — and
-  `ws_send` / `ws_close` reach a connection held by another instance.
-  `broadcast`'s return value, `ws_clients*` and `ws_count()` stay per
-  process; `ws_count({"cluster": true})` adds the others' (as of their last
+  `Channel.send` / `Channel.close` (`ws_send` / `ws_close`) reach a connection
+  held by another instance. `Channel.broadcast`'s return value,
+  `Channel.clients` and `Channel.count` stay per process;
+  `Channel.count({"cluster": true})` adds the others' (as of their last
   10 s heartbeat). `HTTP.stream_to` topics are not carried. Any other value is
   reported at boot and treated as `local`, as is `solidb` on a SQL app.
-- A script that `broadcast`s with the bus on must not exit at once: the
-  publish runs on a background thread (`sleep(1)` is enough to see it land).
+- A script that calls `Channel.broadcast` with the bus on must not exit at
+  once: the publish runs on a background thread (`sleep(1)` is enough to see
+  it land).
 
 ## Score engraver (`eui_score_*`, checked on soli 2.40.4)
 
