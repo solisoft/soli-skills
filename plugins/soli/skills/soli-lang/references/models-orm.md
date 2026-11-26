@@ -93,7 +93,9 @@ Post.all                         # array of instances
 
 Options verified: `presence`, `min_length`, `format` (regex string),
 `numericality` (form strings like `"12"` fail it), `min`, `inclusion`
-("is not included in the list"), `allow_nil`, `custom` (method name).
+("is not included in the list"), `allow_nil`, `custom` (method name),
+`message` (String or Symbol key). Messages follow the request's locale — see
+"I18n in models" below.
 
 ```soli
 class Account < Model
@@ -267,33 +269,75 @@ replica_delay = 2                 # seconds a client that wrote keeps reading th
   tags each query `replica`/`primary`; `dev_queries()` entries gain
   `replica: true/false` (key absent when no connection has replicas).
 
-## Translated fields (I18n in models)
+## I18n in models (main after 2.42.3, verified on SoliDB)
+
+### Validation messages
+
+Errors read in the request's locale. Shipped for en/fr/de/es/it/pt; English
+text unchanged (`"can't be blank"`, `"must be an int"`). The `_errors` hashes
+keep their `{field, message}` shape — no code key.
+
+```soli
+I18n.set_locale("fr")
+post = Post.new({"title": ""})
+post.save
+post._errors          # [{field => title, message => doit être rempli(e)}]
+post.full_messages    # ["Title doit être rempli(e)"]
+Post.human_attribute_name("title")   # models.post.attributes.title, else "Title"
+Post.human_name / Post.human_name(2) # models.post.name_one / _other, else "Post"
+```
+
+Lookup per locale of the chain (locale → `I18n.set_fallbacks` → base `fr-CA`→`fr`
+→ default → en), first hit wins:
+`models.<model>.errors.attributes.<field>.<code>` → `models.<model>.errors.<code>`
+→ app `errors.messages.<code>` → Soli's catalog. `<model>` = snake case
+(`BlogPost` → `blog_post`). Codes: `blank taken invalid not_a_number too_short
+too_long greater_than_or_equal_to less_than_or_equal_to inclusion wrong_type
+value_object value_object_list foreign_key still_referenced stale`;
+`too_short`/`too_long` take `_one`/`_other`. NOT `models.<model>.attributes.
+<field>.<code>` — that path is the field's *name*.
+
+- `validates("slug", {"format": …, "message": :slug_format})` — a Symbol is a key
+  (shows as `"slug_format"` when untranslated); `"message": "text"` is literal.
+- A custom validator may `return :too_big`.
+- A new language = a `config/locales/nl.yml`; missing codes fall back to English.
+- `soli i18n:export fr` → `config/locales/soli.fr.yml`; `soli i18n:missing nl
+  [--from en]` exits 1 when keys are missing. `soli test` loads `config/locales`.
+- No `record.valid?`: validations run on `save` / `create`.
+
+### Translated fields
 
 ```soli
 class Article < Model
   translate "title", "body"      # or `translates`; or Article.translate("title") after the class
 end
 
-article = Article.create({"title": "Hello"})   # the column: the fallback for every locale
+article = Article.create({"title": "Hello"})   # create/new seed the COLUMN (fallback for every locale)
 I18n.set_locale("fr")
 article.title                   # "Hello" — no fr translation yet
-article.title = "Bonjour"       # staged under "fr" (the locale AT ASSIGNMENT)
+article.title = "Bonjour"       # staged under "fr" (the locale AT WRITE time)
 article.title                   # "Bonjour" — reads back before save
 article.save                    # merges into translated_fields, keeps other locales
-article.translated_fields       # {title => {fr => Bonjour}}
-I18n.set_locale("de")
-Article.find(article._key).title   # "Hello" — no locale chain, the column answers
+article.update({"title": "Salut"})   # also writes fr, NOT the column
+article.translation("title", "fr")   # that locale only, nil if none
+article.translations("title")        # {fr => Salut}
+article.set_translation("title", "de", "Hallo")   # staged; save writes it
 ```
 
-- Read order: staged value for the current locale → `translated_fields.<field>.<locale>` → column.
-- An assignment never writes the column, even in the default locale; seed
-  translations on create with `{"translated_fields": {"title": {"fr": "…"}}}`.
-- Queries ignore the locale: `where({"title": …})` compares the column; search
-  a translation by path: `where("doc.translated_fields.title.fr == @t", {"t": …})`.
-- The class-body form and working persistence are on `main` after 2.42.3
-  (verified on SoliDB). Before that, only `Model.translate(...)` after the
-  class existed, `save` did **not** persist translations (`update` did), and a
-  three-level string `where` path was mangled (`doc.a.b.c` → `doc.a.b.doc.c`).
+- Read: regional chain (`fr-CA`, its declared fallbacks, `fr`) staged then
+  stored, then the column. The default locale is not in that chain.
+- `update({"translated_fields": {"title": {"fr": …}}})` merges locale by locale.
+  Form: `f.text_field("title", {"locale": "fr"})` → `name="translated_fields[title][fr]"`,
+  `id="title_fr"`, prefilled. `permit` must list each locale:
+  `permit(params, {"translated_fields": {"title": {"fr": true, "es": true}}})` —
+  `{"title": true}` drops the locale hash.
+- Queries (SoliDB only; SQL adapters refuse): `Article.where_translated({"title": "Bonjour"})`,
+  `.order_translated("title", "desc")` (both chainable after `where`),
+  `Article.missing_translations("es")`. Plain `where({"title": …})` compares the
+  column; `where("doc.translated_fields.title.fr == @t", …)` reaches one locale.
+- Before this (≤ 2.42.3): only `Model.translate(...)` after the class, `save`
+  did **not** persist translations, and a 3-level string `where` path was
+  mangled (`doc.a.b.c` → `doc.a.b.doc.c`).
 
 ## Encryption at rest (fields and files)
 

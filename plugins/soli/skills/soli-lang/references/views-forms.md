@@ -124,8 +124,15 @@ Verified output:
 - Every form embeds `_csrf_token`, a honeypot field and a signed `_soli_ts`.
 - Values prefill from the record and are escaped.
 - After a failed create, errored fields get `class="field-error"
-  aria-invalid="true"`, `errors_for` emits `<span class="field-error-message">`,
-  `error_summary` a `<div class="form-errors"><ul>…</ul></div>`.
+  aria-invalid="true"`, `errors_for` emits `<span class="field-error-message">`
+  (the bare message), `error_summary` a `<div class="form-errors"><ul>…</ul></div>`
+  of full sentences naming the field ("Title can't be blank"; `_base` alone).
+  Since main after 2.42.3 — before, `error_summary` listed bare messages.
+- `f.label("title")` reads `models.<model>.attributes.title` from the locale
+  files when the record is a model (verified served: `<label for="title">Titre</label>`).
+- `f.text_field("title", {"locale": "fr"})` on a translated field →
+  `id="title_fr" name="translated_fields[title][fr]"`, prefilled with that
+  translation (any field helper, and `label(…, {"locale": "fr"})` for `for=`).
 
 Other field helpers (from the docs): `email_field`, `password_field`,
 `number_field`, `date_field`, `datetime_field`, `hidden_field`, `file_field`

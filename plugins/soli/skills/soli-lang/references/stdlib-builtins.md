@@ -315,6 +315,11 @@ Crypto.totp_uri(secret, "ada@example.com", "MyApp")   # otpauth://…
 qr_svg("otpauth://…", 220)                  # inline <svg>, server-rendered; <%- %> in a view; raises if too long
 Toml.parse("a = 1") / Yaml.parse("a: 1")
 I18n.format_currency(12.5, "EUR", "fr")   # "12,50 €"
+I18n.set_fallbacks({"ca": ["es"]}); I18n.locale_chain("ca")   # ["ca", "es", "en"]
+# translate/plural/messages follow locale → fallbacks → base (fr-CA→fr) → default → en
+# A locale file may set number.separator / number.delimiter /
+# number.currency.format ("{unit} {amount}") / date.format ("%d-%m-%Y"):
+# format_number(1234567.5, "nl") → "1.234.567,5" (main after 2.42.3)
 ```
 
 ### Certificates (`X509`)
