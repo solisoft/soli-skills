@@ -141,6 +141,7 @@ false; persistence aborted`). A method ending in `@flagged ||= false` returns
 Post.where({"status": "published"}).count             # hash form: values are bound
 Post.where({"views": {"gte": 6}}).count               # operator hash
 Post.where("doc.views >= @min", {"min": 5}).count     # string form + binds; never concatenate input
+Post.where("doc.meta.tags.x == @t", {"t": "a"})       # deep paths: fine after 2.42.3 (before: matched nothing)
 Post.order("title", "desc").first                     # nil when none
 Post.order("title").limit(2).offset(1).all
 Post.order("status").order("title", "desc").all       # chained .order ADDS: status, then title
@@ -265,6 +266,34 @@ replica_delay = 2                 # seconds a client that wrote keeps reading th
 - `--dev`: the dev bar's DB panel header shows `ROLE READING|WRITING` and
   tags each query `replica`/`primary`; `dev_queries()` entries gain
   `replica: true/false` (key absent when no connection has replicas).
+
+## Translated fields (I18n in models)
+
+```soli
+class Article < Model
+  translate "title", "body"      # or `translates`; or Article.translate("title") after the class
+end
+
+article = Article.create({"title": "Hello"})   # the column: the fallback for every locale
+I18n.set_locale("fr")
+article.title                   # "Hello" — no fr translation yet
+article.title = "Bonjour"       # staged under "fr" (the locale AT ASSIGNMENT)
+article.title                   # "Bonjour" — reads back before save
+article.save                    # merges into translated_fields, keeps other locales
+article.translated_fields       # {title => {fr => Bonjour}}
+I18n.set_locale("de")
+Article.find(article._key).title   # "Hello" — no locale chain, the column answers
+```
+
+- Read order: staged value for the current locale → `translated_fields.<field>.<locale>` → column.
+- An assignment never writes the column, even in the default locale; seed
+  translations on create with `{"translated_fields": {"title": {"fr": "…"}}}`.
+- Queries ignore the locale: `where({"title": …})` compares the column; search
+  a translation by path: `where("doc.translated_fields.title.fr == @t", {"t": …})`.
+- The class-body form and working persistence are on `main` after 2.42.3
+  (verified on SoliDB). Before that, only `Model.translate(...)` after the
+  class existed, `save` did **not** persist translations (`update` did), and a
+  three-level string `where` path was mangled (`doc.a.b.c` → `doc.a.b.doc.c`).
 
 ## Encryption at rest (fields and files)
 

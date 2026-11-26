@@ -256,7 +256,7 @@ of a JS/Python name (`pad_start` → `did you mean 'lpad'?`) — read the hint.
 | `references/language.md` | syntax, types, collections, blocks/lambdas, classes, modules/imports, pattern matching, errors, strings, truthiness |
 | `references/stdlib-builtins.md` | String/Array/Hash/number methods, JSON, XML (parse, find/xpath, build, stream), DateTime/Duration, Regex, Crypto (TOTP, `qr_svg`), passwords, JWT, SAML, passkeys (`WebAuthn`), Base64, files, env, HTTP, app metrics (`Metrics`), V validation, realtime (WebSockets, `broadcast`, `SOLI_REALTIME_BUS`) |
 | `references/controllers-routing.md` | routes, resources/helpers, actions, request access, response shapes, before_action, halt, JSON APIs, uploads |
-| `references/models-orm.md` | Model API, validations, callbacks, associations, query builder, aggregates, grouped, transactions, migrations' `db` API, SQLite setup |
+| `references/models-orm.md` | Model API, validations, callbacks, associations, translated fields (I18n), query builder, aggregates, grouped, transactions, migrations' `db` API, SQLite setup |
 | `references/views-forms.md` | ERB `.html.slv`, escaping, loops, partials, layouts, form_with, button_to, csrf, components |
 | `references/testing.md` | spec DSL, hooks, assertions, E2E client, assigns/view_path, coverage, .env.test |
 | `references/middleware-sessions-security.md` | middleware directives, sessions, cookies, flash, CSRF, permit, SSRF |
