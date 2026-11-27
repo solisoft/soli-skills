@@ -40,8 +40,9 @@ A failing test is listed with its error text (unchanged, so specs matching
 messages keep working) and, when the error points into the spec, a code frame
 of the failing line with "did you mean" and the error code (since 2.36.0).
 
-`print` output from specs is not shown in the report. To debug, append to a
-file: `File.append("/tmp/dbg.log", msg + "\n")` (the runner is not jailed).
+`print` / `println` / `puts` output from a spec is listed under that file's
+row in the report, `│ `-prefixed, once the suite ends (after 2.43.0; until then
+it was dropped).
 
 ## DSL
 
