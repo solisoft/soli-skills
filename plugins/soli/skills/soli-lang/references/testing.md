@@ -41,7 +41,7 @@ messages keep working) and, when the error points into the spec, a code frame
 of the failing line with "did you mean" and the error code (since 2.36.0).
 
 `print` / `println` / `puts` output from a spec is listed under that file's
-row in the report, `│ `-prefixed, once the suite ends (after 2.43.0; until then
+row in the report, `│ `-prefixed, once the suite ends (since 2.43.1; before,
 it was dropped).
 
 ## DSL
