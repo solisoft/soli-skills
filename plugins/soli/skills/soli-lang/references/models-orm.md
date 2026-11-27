@@ -333,8 +333,11 @@ article.set_translation("title", "de", "Hallo")   # staged; save writes it
   `{"title": true}` drops the locale hash.
 - Queries (SoliDB only; SQL adapters refuse): `Article.where_translated({"title": "Bonjour"})`,
   `.order_translated("title", "desc")` (both chainable after `where`),
-  `Article.missing_translations("es")`. Plain `where({"title": …})` compares the
-  column; `where("doc.translated_fields.title.fr == @t", …)` reaches one locale.
+  `Article.missing_translations("es")`. After 2.43.1 both `order_translated` and
+  plain `order("title")` on a declared translated field sort the reader's value
+  case- and accent-insensitively (`SORT LOWER(UNACCENT(v)), v` — Abricot, banane,
+  Éclair, école, Zèbre), unindexed; on SQL `order` sorts the column.
+  Plain `where({"title": …})` compares the column; `where("doc.translated_fields.title.fr == @t", …)` reaches one locale.
 - Before this (≤ 2.42.3): only `Model.translate(...)` after the class, `save`
   did **not** persist translations, and a 3-level string `where` path was
   mangled (`doc.a.b.c` → `doc.a.b.doc.c`).
