@@ -312,20 +312,31 @@ class Article < Model
   translate "title", "body"      # or `translates`; or Article.translate("title") after the class
 end
 
-article = Article.create({"title": "Hello"})   # create/new seed the COLUMN (fallback for every locale)
+article = Article.create({"title": "Hello"})   # en (default) → the COLUMN
 I18n.set_locale("fr")
-article.title                   # "Hello" — no fr translation yet
+article.title                   # "Hello" — no fr translation yet, column answers
 article.title = "Bonjour"       # staged under "fr" (the locale AT WRITE time)
 article.title                   # "Bonjour" — reads back before save
 article.save                    # merges into translated_fields, keeps other locales
-article.update({"title": "Salut"})   # also writes fr, NOT the column
+article.update({"title": "Salut"})   # writes fr, not the column
 article.translation("title", "fr")   # that locale only, nil if none
-article.translations("title")        # {fr => Salut}
+article.translations("title")        # {en => Hello, fr => Salut} — en from the column
 article.set_translation("title", "de", "Hallo")   # staged; save writes it
+I18n.set_locale("en")
+article.update({"title": "Hi"})      # default locale → writes the COLUMN
 ```
 
+- Since 2.43.2 the column **is** the default locale's value
+  (`SOLI_DEFAULT_LOCALE`, else `en`): a default-locale write (assignment,
+  `update`, `set_translation(…, "en", …)`) writes the column and drops any
+  `translated_fields.title.en`; so `where({"title": …})`, `find_by`, uniqueness
+  and indexes on `title` match what default-locale readers see. `create`/`new`
+  in another locale fill the column **and** that locale's translation.
+  Before (≤ 2.43.1) the column froze at the `create` value and default-locale
+  writes went to `translated_fields.title.en`; `Article.sync_translated_columns`
+  (SoliDB, returns a count) moves such entries into the column.
 - Read: regional chain (`fr-CA`, its declared fallbacks, `fr`) staged then
-  stored, then the column. The default locale is not in that chain.
+  stored, then the column.
 - `update({"translated_fields": {"title": {"fr": …}}})` merges locale by locale.
   Form: `f.text_field("title", {"locale": "fr"})` → `name="translated_fields[title][fr]"`,
   `id="title_fr"`, prefilled. `permit` must list each locale:
@@ -333,7 +344,7 @@ article.set_translation("title", "de", "Hallo")   # staged; save writes it
   `{"title": true}` drops the locale hash.
 - Queries (SoliDB only; SQL adapters refuse): `Article.where_translated({"title": "Bonjour"})`,
   `.order_translated("title", "desc")` (both chainable after `where`),
-  `Article.missing_translations("es")`. After 2.43.1 both `order_translated` and
+  `Article.missing_translations("es")`. Since 2.43.2 both `order_translated` and
   plain `order("title")` on a declared translated field sort the reader's value
   case- and accent-insensitively (`SORT LOWER(UNACCENT(v)), v` — Abricot, banane,
   Éclair, école, Zèbre), unindexed; on SQL `order` sorts the column.
