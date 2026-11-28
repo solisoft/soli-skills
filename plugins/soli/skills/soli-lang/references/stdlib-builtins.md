@@ -225,6 +225,12 @@ Spreadsheet.excel_sheets("book.xlsx")                  # {"Clients": [...], "Ven
 - Sheet names Excel refuses raise: empty, > 31 chars, `: \ / ? * [ ]`, a
   leading/trailing `'`, `History`, duplicates ignoring case. With a hash of
   sheets there is no third argument — put `columns` inside the sheet.
+- (unreleased on main) Every path is jailed like `File.*` under serve/jobs —
+  `excel`, `excel_sheets`, `excel_write` too (before, they opened any path);
+  outside the app root raises "… escapes the app-root jail", symlinks are not
+  followed. `excel`/`excel_sheets` refuse a file over
+  `SOLI_SPREADSHEET_MAX_BYTES` (50 MiB) or inflating past
+  `SOLI_SPREADSHEET_MAX_INFLATED_BYTES` (512 MiB); a malformed file raises.
 
 ## DateTime and Duration
 
@@ -335,6 +341,15 @@ id = X509.issue({"issuer_cert": ca_pem, "issuer_key": ca_key_pem,
 # id: cert, key (PKCS#8 PEM), serial, not_after_unix — feed cert/key to PDF.sign
 # with "chain": [ca_pem, root_pem]; one key per signer = eIDAS advanced signature.
 ```
+
+RSA signing (unreleased on main): `RsaKey.sign(private_pem, message, "sha256" | "sha512")`
+returns a base64 RSASSA-PKCS1-v1_5 signature (`RsaKey.verify` checks it),
+computed by `ring` — blinded, constant time. Do not sign with
+`Crypto.modexp(em, key["d"], key["n"])`: it is not blinded and leaks `d` through
+timing. RSA keys under 2048 bits are refused for signing (`RsaKey.sign`,
+`PDF.sign`, `Saml.test_response`). `PDF.verify`'s `covers_document` now also
+requires the range to start at byte 0 and leave out only that signature's
+`/Contents`.
 
 ### SAML sign-in (`Saml`, since 2.36.3)
 
