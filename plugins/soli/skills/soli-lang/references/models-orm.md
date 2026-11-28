@@ -17,7 +17,7 @@ DATABASE_URL=sqlite://db/test.sqlite3
 
 Then `soli db:migrate up`. The model surface is the same on SoliDB, SQLite,
 Postgres and MySQL (documents stored as `_key` + JSON). The test runner
-creates, migrates and drops its database itself (it still prints a SoliDB
+creates, migrates and resets its database itself (it still prints a SoliDB
 host in its banner; ignore that).
 
 ## Defining a model

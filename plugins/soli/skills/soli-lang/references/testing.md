@@ -10,8 +10,11 @@ SOLI_DB_ADAPTER=sqlite
 DATABASE_URL=sqlite://db/test.sqlite3
 ```
 
-It creates the test database, runs `db/migrations`, starts real test
-server(s), runs specs, and drops the database. Models, helpers, middleware,
+It creates the test database (or empties the one a previous run kept),
+applies the pending `db/migrations` — all of them the first time, only new
+ones after — starts real test server(s), runs specs, and keeps the database
+for the next run (`SOLI_TEST_DROP_DB=1` drops it instead;
+`SOLI_TEST_FRESH_DB=1` rebuilds it at start-up). Models, helpers, middleware,
 services, policies, mailers, jobs and subscribers are preloaded so specs call
 them directly (mailers and subscribers since 2.33.0, #676 —
 before it a service using a mailer raised "Undefined variable"). Since
